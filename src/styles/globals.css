@@ -1,0 +1,145 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+
+@layer base {
+  :root {
+    --background: 0 0% 97%;
+    --foreground: 216 13% 13%;
+    --card: 0 0% 100%;
+    --card-foreground: 216 13% 13%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 216 13% 13%;
+    --primary: 162 73% 35%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 97%;
+    --secondary-foreground: 216 13% 13%;
+    --muted: 220 13% 93%;
+    --muted-foreground: 240 4% 46%;
+    --accent: 220 13% 94%;
+    --accent-foreground: 216 13% 13%;
+    --destructive: 348 83% 47%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 0% / 0.1;
+    --input: 0 0% 0% / 0;
+    --input-background: 0 0% 100%;
+    --ring: 162 73% 35%;
+    --chart-1: 41 100% 65%;
+    --chart-2: 185 60% 60%;
+    --chart-3: 227 50% 40%;
+    --chart-4: 84 80% 75%;
+    --chart-5: 70 70% 70%;
+    --radius: 0.5rem;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 216 13% 13%;
+    --sidebar-primary: 162 73% 35%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 97%;
+    --sidebar-accent-foreground: 216 13% 13%;
+    --sidebar-border: 0 0% 0% / 0.1;
+    --sidebar-ring: 162 73% 35%;
+  }
+
+  .dark {
+    --background: 0 0% 10%;
+    --foreground: 220 13% 93%;
+    --card: 0 0% 18%;
+    --card-foreground: 220 13% 93%;
+    --popover: 0 0% 18%;
+    --popover-foreground: 220 13% 93%;
+    --primary: 162 73% 35%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 18%;
+    --secondary-foreground: 220 13% 93%;
+    --muted: 0 0% 23%;
+    --muted-foreground: 240 5% 61%;
+    --accent: 0 0% 23%;
+    --accent-foreground: 220 13% 93%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 100% / 0.1;
+    --input: 0 0% 0% / 0;
+    --input-background: 0 0% 18%;
+    --ring: 162 73% 35%;
+    --chart-1: 264 70% 50%;
+    --chart-2: 162 60% 65%;
+    --chart-3: 70 70% 70%;
+    --chart-4: 304 70% 60%;
+    --chart-5: 16 70% 65%;
+    --sidebar-background: 0 0% 18%;
+    --sidebar-foreground: 220 13% 93%;
+    --sidebar-primary: 162 73% 35%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 23%;
+    --sidebar-accent-foreground: 220 13% 93%;
+    --sidebar-border: 0 0% 100% / 0.1;
+    --sidebar-ring: 162 73% 35%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  html {
+    font-size: 16px;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
+      "Roboto", sans-serif;
+  }
+
+  body {
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
+      "Roboto", sans-serif;
+  }
+}
+
+/* Typing animation for streaming */
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.delay-100 {
+  animation-delay: 0.1s;
+}
+
+.delay-200 {
+  animation-delay: 0.2s;
+}
+
+/* Slide down animation for new chats - contained within ScrollArea */
+@keyframes slideDown {
+  0% {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-slideDown {
+  animation: slideDown 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* Smooth transition for existing chats - they slide naturally within container */
+.animate-slideDownExisting {
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 0.4s ease-out;
+}

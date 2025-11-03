@@ -1,0 +1,231 @@
+/**
+ * Sentiment Analyzer for Product Reviews
+ * 
+ * This module provides sentiment analysis for product reviews using a hybrid approach:
+ * 1. Lexicon-based analysis for quick, offline sentiment scoring
+ * 2. Optional Gemini AI for more nuanced analysis
+ */
+
+// Sentiment lexicon - common positive/negative words with scores
+const POSITIVE_WORDS = new Set([
+  'good', 'great', 'excellent', 'amazing', 'awesome', 'fantastic', 'wonderful', 
+  'love', 'best', 'perfect', 'nice', 'quality', 'recommended', 'satisfied',
+  'happy', 'pleased', 'worth', 'fast', 'durable', 'sturdy', 'reliable',
+  'comfortable', 'smooth', 'strong', 'value', 'works', 'better', 'liked',
+  'impressive', 'superb', 'outstanding', 'brilliant', 'top', 'premium'
+]);
+
+const NEGATIVE_WORDS = new Set([
+  'bad', 'poor', 'terrible', 'horrible', 'awful', 'worst', 'hate', 'disappointed',
+  'disappointing', 'useless', 'waste', 'broken', 'defective', 'cheap', 'inferior',
+  'slow', 'failed', 'problem', 'issue', 'not', 'never', 'fake', 'fraud',
+  'doesn\'t', 'don\'t', 'won\'t', 'can\'t', 'stopped', 'damage', 'damaged'
+]);
+
+// Intensifiers that multiply sentiment
+const INTENSIFIERS = new Map([
+  ['very', 1.5],
+  ['extremely', 2.0],
+  ['really', 1.3],
+  ['absolutely', 1.8],
+  ['totally', 1.5],
+  ['completely', 1.7],
+  ['highly', 1.4],
+  ['super', 1.6],
+]);
+
+// Negations that flip sentiment
+const NEGATIONS = new Set(['not', 'no', 'never', 'neither', 'nobody', 'nothing', 'nowhere', 'hardly', 'barely']);
+
+export interface SentimentResult {
+  score: number; // -1 to 1 (negative to positive)
+  label: 'positive' | 'negative' | 'neutral';
+  confidence: number; // 0 to 1
+  details?: {
+    positiveWords: string[];
+    negativeWords: string[];
+    intensifiers: string[];
+  };
+}
+
+/**
+ * Analyze sentiment of text using lexicon-based approach
+ * This is fast, free, and works offline
+ */
+export function analyzeSentiment(text: string): SentimentResult {
+  if (!text || text.trim().length === 0) {
+    return {
+      score: 0,
+      label: 'neutral',
+      confidence: 0,
+    };
+  }
+
+  // Normalize text
+  const normalized = text.toLowerCase();
+  const words = normalized.split(/\s+/);
+  
+  let score = 0;
+  let positiveCount = 0;
+  let negativeCount = 0;
+  const foundPositive: string[] = [];
+  const foundNegative: string[] = [];
+  const foundIntensifiers: string[] = [];
+  
+  // Track negation context (words after "not", "never", etc.)
+  let negationActive = false;
+  let intensifier = 1.0;
+  
+  for (let i = 0; i < words.length; i++) {
+    const word = words[i].replace(/[.,!?;:]$/, ''); // Remove punctuation
+    
+    // Check for negation
+    if (NEGATIONS.has(word)) {
+      negationActive = true;
+      continue;
+    }
+    
+    // Check for intensifiers
+    if (INTENSIFIERS.has(word)) {
+      intensifier = INTENSIFIERS.get(word)!;
+      foundIntensifiers.push(word);
+      continue;
+    }
+    
+    // Check sentiment
+    if (POSITIVE_WORDS.has(word)) {
+      const wordScore = 1 * intensifier;
+      if (negationActive) {
+        score -= wordScore; // Negation flips sentiment
+        negativeCount++;
+        foundNegative.push(word);
+      } else {
+        score += wordScore;
+        positiveCount++;
+        foundPositive.push(word);
+      }
+      negationActive = false;
+      intensifier = 1.0;
+    } else if (NEGATIVE_WORDS.has(word)) {
+      const wordScore = 1 * intensifier;
+      if (negationActive) {
+        score += wordScore; // "not bad" becomes positive
+        positiveCount++;
+        foundPositive.push(word);
+      } else {
+        score -= wordScore;
+        negativeCount++;
+        foundNegative.push(word);
+      }
+      negationActive = false;
+      intensifier = 1.0;
+    } else {
+      // Reset negation after 3 words
+      if (negationActive && i > 0) {
+        negationActive = false;
+      }
+    }
+  }
+  
+  // Normalize score to -1 to 1 range
+  const totalWords = positiveCount + negativeCount;
+  const normalizedScore = totalWords > 0 ? score / totalWords : 0;
+  const clampedScore = Math.max(-1, Math.min(1, normalizedScore));
+  
+  // Determine label and confidence
+  let label: 'positive' | 'negative' | 'neutral';
+  let confidence: number;
+  
+  if (clampedScore > 0.1) {
+    label = 'positive';
+    confidence = Math.min(Math.abs(clampedScore), 0.95);
+  } else if (clampedScore < -0.1) {
+    label = 'negative';
+    confidence = Math.min(Math.abs(clampedScore), 0.95);
+  } else {
+    label = 'neutral';
+    confidence = 1 - Math.abs(clampedScore);
+  }
+  
+  return {
+    score: parseFloat(clampedScore.toFixed(2)),
+    label,
+    confidence: parseFloat(confidence.toFixed(2)),
+    details: {
+      positiveWords: foundPositive,
+      negativeWords: foundNegative,
+      intensifiers: foundIntensifiers,
+    },
+  };
+}
+
+/**
+ * Analyze sentiment of multiple reviews
+ * Returns array of sentiment results
+ */
+export function analyzeBatchSentiments(texts: string[]): SentimentResult[] {
+  return texts.map(text => analyzeSentiment(text));
+}
+
+/**
+ * Get aggregate sentiment statistics for multiple reviews
+ */
+export function getSentimentStats(sentiments: SentimentResult[]) {
+  if (sentiments.length === 0) {
+    return {
+      avgScore: 0,
+      positive: 0,
+      negative: 0,
+      neutral: 0,
+      avgConfidence: 0,
+    };
+  }
+  
+  const avgScore = sentiments.reduce((sum, s) => sum + s.score, 0) / sentiments.length;
+  const positive = sentiments.filter(s => s.label === 'positive').length;
+  const negative = sentiments.filter(s => s.label === 'negative').length;
+  const neutral = sentiments.filter(s => s.label === 'neutral').length;
+  const avgConfidence = sentiments.reduce((sum, s) => sum + s.confidence, 0) / sentiments.length;
+  
+  return {
+    avgScore: parseFloat(avgScore.toFixed(2)),
+    positive,
+    negative,
+    neutral,
+    positivePercent: parseFloat(((positive / sentiments.length) * 100).toFixed(1)),
+    negativePercent: parseFloat(((negative / sentiments.length) * 100).toFixed(1)),
+    neutralPercent: parseFloat(((neutral / sentiments.length) * 100).toFixed(1)),
+    avgConfidence: parseFloat(avgConfidence.toFixed(2)),
+  };
+}
+
+/**
+ * Format sentiment result as human-readable string
+ */
+export function formatSentiment(sentiment: SentimentResult): string {
+  const emoji = sentiment.label === 'positive' ? '😊' : sentiment.label === 'negative' ? '😞' : '😐';
+  const scorePercent = Math.round(sentiment.score * 100);
+  return `${emoji} ${sentiment.label.toUpperCase()} (${scorePercent > 0 ? '+' : ''}${scorePercent}%, confidence: ${Math.round(sentiment.confidence * 100)}%)`;
+}
+
+/**
+ * Example usage and testing
+ */
+export function testSentimentAnalyzer() {
+  const testCases = [
+    "This product is absolutely amazing! Best purchase ever!",
+    "Terrible quality. Waste of money. Very disappointed.",
+    "It's okay. Not great but not bad either.",
+    "Good product, fast charging, worth the price.",
+    "Not bad, but could be better. The cable is too short.",
+    "I love this! Really good value for money.",
+  ];
+  
+  console.log('🧪 Testing Sentiment Analyzer\n');
+  testCases.forEach((text, i) => {
+    const result = analyzeSentiment(text);
+    console.log(`Test ${i + 1}: "${text}"`);
+    console.log(`Result: ${formatSentiment(result)}`);
+    console.log(`Details: +${result.details?.positiveWords.length} positive, -${result.details?.negativeWords.length} negative\n`);
+  });
+}

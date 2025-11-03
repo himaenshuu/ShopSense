@@ -1,0 +1,77 @@
+# Dependencies
+node_modules
+node_modules/
+/.pnp
+.pnp.js
+
+# Testing files and scripts
+/test
+/scripts
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+
+# Production build
+/.next/
+/out/
+/build
+/dist
+
+# Environment variables
+.env
+.env*.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+*.log
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Jupyter Notebooks
+.ipynb_checkpoints
+*.ipynb
+
+# Documentation (except README.md)
+*.md
+!README.md
+
+# Cache
+.cache/
+.parcel-cache/
+.eslintcache
+
+# Misc
+.vercel
+*.pem

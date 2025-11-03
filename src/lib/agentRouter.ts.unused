@@ -1,0 +1,346 @@
+/**
+ * Agent Router
+ *
+ * Main orchestrator that:
+ * 1. Classifies user query intent
+ * 2. Routes to appropriate data source (MongoDB, LLM, or hybrid)
+ * 3. Applies sentiment analysis when needed
+ * 4. Formats unified response
+ */
+
+import { classifyIntent, QueryIntent } from "./intentClassifier";
+import { productService } from "./productService";
+import {
+  analyzeBatchSentiments,
+  getSentimentStats,
+  SentimentResult,
+} from "./sentimentAnalyzer";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
+// Initialize Gemini
+const genAI = new GoogleGenerativeAI(
+  process.env.NEXT_PUBLIC_GEMINI_API_KEY || ""
+);
+const model = genAI.getGenerativeModel({
+  model: "gemini-2.5-flash-lite",
+});
+
+export interface AgentResponse {
+  intent: QueryIntent;
+  confidence: number;
+  route: "data" | "llm" | "hybrid";
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  data?: any; // Product data from MongoDB
+  llmResponse?: string; // Generated text from LLM
+  sentiment?: {
+    overall: SentimentResult;
+    stats: ReturnType<typeof getSentimentStats>;
+  };
+  formattedResponse: string; // Final formatted answer
+  executionTime: number; // ms
+  error?: string;
+}
+
+/**
+ * Route query to appropriate handler based on intent
+ */
+export async function routeQuery(userQuery: string): Promise<AgentResponse> {
+  const startTime = Date.now();
+
+  // Step 1: Classify intent
+  const classification = classifyIntent(userQuery);
+  const { intent, confidence, extractedEntities } = classification;
+
+  let route: "data" | "llm" | "hybrid";
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let data: any = null;
+  let llmResponse: string | undefined = undefined;
+  let sentiment: AgentResponse["sentiment"] = undefined;
+  let formattedResponse = "";
+  let error: string | undefined = undefined;
+
+  try {
+    // Step 2: Route based on intent
+    if (intent === "greeting") {
+      route = "llm";
+      llmResponse =
+        "Hello! I'm your Amazon product assistant. I can help you with:\n\n" +
+        "• Product prices and deals\n" +
+        "• Customer reviews and ratings\n" +
+        "• Product comparisons\n" +
+        "• Top recommendations\n" +
+        "• General product questions\n\n" +
+        "What would you like to know?";
+      formattedResponse = llmResponse;
+    } else if (intent === "product_price") {
+      // DATA ONLY: Get price from MongoDB
+      route = "data";
+      const productName = extractedEntities.productName || userQuery;
+      const priceInfoList = await productService.getProductPrice(productName);
+
+      if (priceInfoList && priceInfoList.length > 0) {
+        const priceInfo = priceInfoList[0];
+        data = priceInfoList;
+
+        // Parse prices
+        const discountedPrice =
+          parseFloat(priceInfo.discounted_price.replace(/[₹,]/g, "")) || 0;
+        const actualPrice =
+          parseFloat(priceInfo.actual_price.replace(/[₹,]/g, "")) || 0;
+        const savings = parseFloat(priceInfo.savings.replace(/[₹,]/g, "")) || 0;
+
+        formattedResponse =
+          `**${priceInfo.product_name}**\n\n` +
+          `💰 **Current Price:** ${priceInfo.discounted_price}\n` +
+          (actualPrice !== discountedPrice
+            ? `~~${priceInfo.actual_price}~~ (${priceInfo.discount_percentage} off)\n` +
+              `💵 **You Save:** ${priceInfo.savings}\n\n`
+            : "\n");
+      } else {
+        formattedResponse = `Sorry, I couldn't find pricing information for "${productName}".`;
+      }
+    } else if (intent === "product_reviews") {
+      // DATA + SENTIMENT: Get reviews and analyze sentiment
+      route = "hybrid";
+      const productName = extractedEntities.productName || userQuery;
+      const limit = extractedEntities.limit || 5;
+
+      const reviews = await productService.getTopReviews(productName, limit);
+
+      if (reviews && reviews.length > 0) {
+        data = reviews;
+
+        // Analyze sentiment of all reviews
+        const reviewTexts = reviews.map((r) => r.review_content);
+        const sentiments = analyzeBatchSentiments(reviewTexts);
+        const stats = getSentimentStats(sentiments);
+
+        sentiment = {
+          overall: sentiments[0], // Top review sentiment
+          stats,
+        };
+
+        // Format response
+        formattedResponse =
+          `**Top ${reviews.length} Reviews:**\n\n` +
+          `📊 **Sentiment Analysis:**\n` +
+          `✅ Positive: ${stats.positivePercentage}%\n` +
+          `❌ Negative: ${stats.negativePercentage}%\n` +
+          `😐 Neutral: ${stats.neutralPercentage}%\n` +
+          `⭐ Average Sentiment: ${stats.averageScore.toFixed(2)}/5\n\n`;
+
+        reviews.forEach((review, i) => {
+          const reviewSentiment = sentiments[i];
+          const emoji =
+            reviewSentiment.label === "positive"
+              ? "😊"
+              : reviewSentiment.label === "negative"
+              ? "�"
+              : "😐";
+
+          formattedResponse +=
+            `${i + 1}. ${emoji} **${review.review_title}**\n` +
+            `   Rating: ${"⭐".repeat(Math.round(review.rating))}\n` +
+            `   "${review.review_content.substring(0, 150)}${
+              review.review_content.length > 150 ? "..." : ""
+            }"\n` +
+            `   - *${review.user_name}*\n\n`;
+        });
+      } else {
+        formattedResponse = `Sorry, I couldn't find reviews for "${productName}".`;
+      }
+    } else if (intent === "product_search") {
+      // DATA ONLY: Search products
+      route = "data";
+      const searchTerm = extractedEntities.productName || userQuery;
+      const limit = extractedEntities.limit || 10;
+      const priceRange = extractedEntities.priceRange;
+
+      let products;
+      if (priceRange) {
+        products = await productService.getProductsByPriceRange(
+          priceRange.min,
+          priceRange.max,
+          searchTerm,
+          limit
+        );
+      } else {
+        products = await productService.getTopRatedProducts(searchTerm, limit);
+      }
+
+      if (products && products.length > 0) {
+        data = products;
+        formattedResponse = `**Top ${products.length} Products:**\n\n`;
+
+        products.forEach((product, i) => {
+          formattedResponse +=
+            `${i + 1}. **${product.product_name}**\n` +
+            `   💰 ₹${product.discounted_price} ${
+              product.discount_percentage
+                ? `(${product.discount_percentage} off)`
+                : ""
+            }\n` +
+            `   ⭐ ${product.rating}/5 (${product.rating_count} reviews)\n\n`;
+        });
+      } else {
+        formattedResponse = `Sorry, I couldn't find products matching "${searchTerm}".`;
+      }
+    } else if (intent === "product_comparison") {
+      // HYBRID: Get data + LLM explanation
+      route = "hybrid";
+      const productName = extractedEntities.productName || "";
+
+      // Get stats for the product category
+      const stats = await productService.getProductStats(productName);
+
+      if (stats) {
+        data = stats;
+
+        // Ask LLM to explain the comparison
+        const prompt =
+          `Based on this data about "${productName}" products:\n\n` +
+          `Total Products: ${stats.totalProducts}\n` +
+          `Average Price: ₹${stats.averagePrice.toFixed(2)}\n` +
+          `Price Range: ₹${stats.priceRange.min} - ₹${stats.priceRange.max}\n` +
+          `Average Rating: ${stats.averageRating.toFixed(1)}/5\n` +
+          `Total Reviews: ${stats.totalReviews}\n\n` +
+          `Please provide a brief comparison and recommendation for someone looking to buy ${productName}.`;
+
+        const result = await model.generateContent(prompt);
+        llmResponse = result.response.text();
+
+        formattedResponse =
+          `**${productName} - Market Overview:**\n\n` +
+          `📊 **Statistics:**\n` +
+          `• ${stats.totalProducts} products available\n` +
+          `• Average Price: ₹${stats.averagePrice.toFixed(2)}\n` +
+          `• Price Range: ₹${stats.priceRange.min} - ₹${stats.priceRange.max}\n` +
+          `• Average Rating: ${stats.averageRating.toFixed(1)}/5 ⭐\n` +
+          `• Total Reviews: ${stats.totalReviews.toLocaleString()}\n\n` +
+          `💡 **Recommendation:**\n${llmResponse}`;
+      } else {
+        // Fallback to LLM only
+        route = "llm";
+        const result = await model.generateContent(userQuery);
+        llmResponse = result.response.text();
+        formattedResponse = llmResponse;
+      }
+    } else if (intent === "product_info") {
+      // HYBRID: Get product data + LLM explanation
+      route = "hybrid";
+      const productName = extractedEntities.productName || userQuery;
+
+      const products = await productService.searchProducts(productName, 3);
+
+      if (products && products.length > 0) {
+        data = products;
+        const topProduct = products[0];
+
+        // Get some reviews for context
+        const reviews = await productService.getProductReviews(productName, 5);
+        const reviewSummary =
+          reviews
+            ?.slice(0, 3)
+            .map((r) => r.review_content)
+            .join(". ") || "";
+
+        // Ask LLM to explain
+        const prompt =
+          `Provide detailed information about this product:\n\n` +
+          `Product: ${topProduct.product_name}\n` +
+          `Price: ₹${topProduct.discounted_price}\n` +
+          `Rating: ${topProduct.rating}/5 (${topProduct.rating_count} reviews)\n` +
+          `Category: ${topProduct.category}\n\n` +
+          `Customer Reviews Summary: ${reviewSummary}\n\n` +
+          `Please explain what this product is, its key features, and who it's best for. Keep it concise (2-3 sentences).`;
+
+        const result = await model.generateContent(prompt);
+        llmResponse = result.response.text();
+
+        formattedResponse =
+          `**${topProduct.product_name}**\n\n` +
+          `💰 **Price:** ₹${topProduct.discounted_price} ${
+            topProduct.discount_percentage
+              ? `(${topProduct.discount_percentage} off)`
+              : ""
+          }\n` +
+          `⭐ **Rating:** ${topProduct.rating}/5 (${topProduct.rating_count} reviews)\n` +
+          `🏷️ **Category:** ${topProduct.category}\n\n` +
+          `📝 **About:**\n${llmResponse}`;
+      } else {
+        // Fallback to LLM only
+        route = "llm";
+        const result = await model.generateContent(userQuery);
+        llmResponse = result.response.text();
+        formattedResponse = llmResponse;
+      }
+    } else {
+      // GENERAL QUESTION: LLM only
+      route = "llm";
+      const result = await model.generateContent(userQuery);
+      llmResponse = result.response.text();
+      formattedResponse = llmResponse;
+    }
+  } catch (err) {
+    error = err instanceof Error ? err.message : "Unknown error occurred";
+    formattedResponse = `Sorry, I encountered an error: ${error}`;
+    route = "llm";
+  }
+
+  const executionTime = Date.now() - startTime;
+
+  return {
+    intent,
+    confidence,
+    route,
+    data,
+    llmResponse,
+    sentiment,
+    formattedResponse,
+    executionTime,
+    error,
+  };
+}
+
+/**
+ * Test agent router with examples
+ */
+export async function testAgentRouter() {
+  const testQueries = [
+    "What is the price of boat rugged v3?",
+    "Show me top 3 reviews for boat type c cable",
+    "Best USB cables under 500",
+    "Tell me about Samsung TV",
+    "What is USB-C?",
+  ];
+
+  console.log("🤖 Testing Agent Router\n");
+
+  for (const query of testQueries) {
+    console.log(`\n${"=".repeat(80)}`);
+    console.log(`Query: "${query}"`);
+    console.log("=".repeat(80));
+
+    const response = await routeQuery(query);
+
+    console.log(
+      `\n📋 Intent: ${response.intent} (${Math.round(
+        response.confidence * 100
+      )}% confident)`
+    );
+    console.log(`🚦 Route: ${response.route.toUpperCase()}`);
+    console.log(`⏱️  Execution Time: ${response.executionTime}ms`);
+
+    if (response.sentiment) {
+      console.log(
+        `\n😊 Sentiment: ${response.sentiment.stats.positivePercentage}% positive, ${response.sentiment.stats.negativePercentage}% negative`
+      );
+    }
+
+    console.log(`\n📝 Response:\n${response.formattedResponse}\n`);
+
+    if (response.error) {
+      console.log(`❌ Error: ${response.error}`);
+    }
+  }
+}
