@@ -1,15 +1,4 @@
-/**
- * Amazon Product Service
- *
- * This service provides methods to query the Amazon products database
- * with support for fuzzy search, price queries, review extraction, and more.
- */
-
 import { getDatabase } from "./mongodb";
-
-// ============================================================================
-// TYPE DEFINITIONS
-// ============================================================================
 
 export interface ProductReview {
   user_id: string;
@@ -48,42 +37,22 @@ export interface PriceInfo {
   savings: string;
 }
 
-// ============================================================================
-// PRODUCT SERVICE CLASS
-// ============================================================================
-
 class ProductService {
   private dbName = "chatai";
   private collectionName = "amazon_products";
 
-  /**
-   * Get database instance
-   */
   private async getDb() {
     return getDatabase(this.dbName);
   }
 
-  /**
-   * Get collection
-   */
   private async getCollection() {
     const db = await this.getDb();
     return db.collection(this.collectionName);
   }
 
-  // ==========================================================================
-  // PRODUCT SEARCH
-  // ==========================================================================
-
-  /**
-   * Search products by name (fuzzy matching)
-   * @param query - Search term (e.g., "boat rugged v3", "usb cable")
-   * @param limit - Maximum number of results
-   */
   async searchProducts(query: string, limit: number = 10): Promise<Product[]> {
     const collection = await this.getCollection();
 
-    // Use text search for better matching
     const results = await collection
       .find({
         $text: { $search: query },
@@ -96,18 +65,12 @@ class ProductService {
     return results as unknown as Product[];
   }
 
-  /**
-   * Search products by exact product ID
-   */
   async getProductById(productId: string): Promise<Product | null> {
     const collection = await this.getCollection();
     const result = await collection.findOne({ product_id: productId });
     return result as Product | null;
   }
 
-  /**
-   * Search products by category
-   */
   async getProductsByCategory(
     category: string,
     limit: number = 20
@@ -125,19 +88,10 @@ class ProductService {
     return results as unknown as Product[];
   }
 
-  // ==========================================================================
-  // PRICE QUERIES
-  // ==========================================================================
-
-  /**
-   * Get price information for a product
-   * @param query - Product name or search term
-   */
   async getProductPrice(query: string): Promise<PriceInfo[]> {
     const products = await this.searchProducts(query, 5);
 
     return products.map((p) => {
-      // Calculate actual savings
       const discounted =
         parseFloat(p.discounted_price.replace(/[₹,]/g, "")) || 0;
       const actual = parseFloat(p.actual_price.replace(/[₹,]/g, "")) || 0;
@@ -154,9 +108,6 @@ class ProductService {
     });
   }
 
-  /**
-   * Get products within a price range
-   */
   async getProductsByPriceRange(
     minPrice: number,
     maxPrice: number,
@@ -164,7 +115,6 @@ class ProductService {
   ): Promise<Product[]> {
     const collection = await this.getCollection();
 
-    // Note: Prices are stored as strings, so we need to convert them
     const allProducts = (await collection
       .find({})
       .limit(1000)
@@ -181,15 +131,6 @@ class ProductService {
     return filtered;
   }
 
-  // ==========================================================================
-  // REVIEW QUERIES
-  // ==========================================================================
-
-  /**
-   * Get reviews for a product
-   * @param query - Product name or ID
-   * @param limit - Maximum number of reviews
-   */
   async getProductReviews(
     query: string,
     limit: number = 10
@@ -212,11 +153,6 @@ class ProductService {
     };
   }
 
-  /**
-   * Get top-rated reviews for a product
-   * Note: Since our data doesn't have individual review ratings,
-   * we'll return the most recent/first reviews
-   */
   async getTopReviews(
     query: string,
     limit: number = 5
@@ -225,9 +161,6 @@ class ProductService {
     return result?.reviews || [];
   }
 
-  /**
-   * Search reviews by keyword
-   */
   async searchReviews(
     productQuery: string,
     keyword: string,
@@ -239,7 +172,6 @@ class ProductService {
       return [];
     }
 
-    // Filter reviews containing the keyword
     const filtered = result.reviews.filter(
       (review) =>
         review.review_content.toLowerCase().includes(keyword.toLowerCase()) ||
@@ -249,13 +181,6 @@ class ProductService {
     return filtered.slice(0, limit);
   }
 
-  // ==========================================================================
-  // COMPARISON & STATISTICS
-  // ==========================================================================
-
-  /**
-   * Get top-rated products in a category
-   */
   async getTopRatedProducts(
     category?: string,
     limit: number = 10
@@ -275,9 +200,6 @@ class ProductService {
     return results as unknown as Product[];
   }
 
-  /**
-   * Compare multiple products
-   */
   async compareProducts(productNames: string[]): Promise<Product[]> {
     const products: Product[] = [];
 
@@ -291,9 +213,6 @@ class ProductService {
     return products;
   }
 
-  /**
-   * Get product statistics for a search query
-   */
   async getProductStats(query: string) {
     const products = await this.searchProducts(query, 100);
 
@@ -322,21 +241,11 @@ class ProductService {
     };
   }
 
-  // ==========================================================================
-  // UTILITY METHODS
-  // ==========================================================================
-
-  /**
-   * Get total product count
-   */
   async getTotalProductCount(): Promise<number> {
     const collection = await this.getCollection();
     return collection.countDocuments();
   }
 
-  /**
-   * Get product count by category
-   */
   async getCategoryCount(category: string): Promise<number> {
     const collection = await this.getCollection();
     return collection.countDocuments({
@@ -344,9 +253,6 @@ class ProductService {
     });
   }
 
-  /**
-   * Get all unique categories
-   */
   async getAllCategories(): Promise<string[]> {
     const collection = await this.getCollection();
     const categories = await collection.distinct("category");
@@ -354,9 +260,4 @@ class ProductService {
   }
 }
 
-// ============================================================================
-// EXPORTS
-// ============================================================================
-
-// Singleton service instance
 export const productService = new ProductService();

@@ -1,11 +1,3 @@
-/**
- * AI Chat API Route with Google Gemini Integration + Product Data
- *
- * This Next.js API route handles AI chat completions using Google's Gemini AI
- * with streaming support for real-time responses. It also integrates with our
- * Amazon product database to provide data-driven responses for product queries.
- */
-
 import { NextRequest } from "next/server";
 import {
   generateStreamingResponse,
@@ -18,17 +10,12 @@ import {
   getSentimentStats,
 } from "@/lib/sentimentAnalyzer";
 
-// Consistent streaming configuration
 const STREAMING_CONFIG = {
-  CHARS_PER_CHUNK: 3, // Number of characters to send per chunk
-  DELAY_MS: 20, // Delay between chunks in milliseconds
+  CHARS_PER_CHUNK: 3,
+  DELAY_MS: 20,
 };
 
-/**
- * Enhance user message with product data if query requires it
- */
 async function enhanceMessageWithProductData(message: string): Promise<string> {
-  // Classify the intent
   const classification = classifyIntent(message);
   const { intent, requiresData, extractedEntities } = classification;
 
@@ -38,7 +25,6 @@ async function enhanceMessageWithProductData(message: string): Promise<string> {
     )}% confident)`
   );
 
-  // If no data required, add system instruction for concise responses
   if (!requiresData) {
     return `${message}\n\nIMPORTANT: Always give short and clear responses. Avoid lengthy explanations unless specifically asked. Be concise and to the point.`;
   }
@@ -47,7 +33,6 @@ async function enhanceMessageWithProductData(message: string): Promise<string> {
   let productData = "";
 
   try {
-    // Handle different intent types
     if (intent === "product_price") {
       const productName = extractedEntities.productName || message;
       const priceInfoList = await productService.getProductPrice(productName);
@@ -67,7 +52,6 @@ async function enhanceMessageWithProductData(message: string): Promise<string> {
       const reviews = await productService.getTopReviews(productName, limit);
 
       if (reviews && reviews.length > 0) {
-        // Analyze sentiment
         const reviewTexts = reviews.map((r) => r.review_content);
         const sentiments = await analyzeBatchSentiments(reviewTexts);
         const stats = getSentimentStats(sentiments);
@@ -137,13 +121,12 @@ async function enhanceMessageWithProductData(message: string): Promise<string> {
         productData += `Rating: ${topProduct.rating}/5 (${topProduct.rating_count} reviews)\n`;
         productData += `Category: ${topProduct.category}\n`;
 
-        // Add some reviews for context
         const reviewResult = await productService.getProductReviews(
           productName,
           3
         );
         if (reviewResult && reviewResult.reviews.length > 0) {
-          productData += "\nTop Reviews:\n";
+          productData += `\nTop Reviews:\n`;
           reviewResult.reviews.forEach((r, i) => {
             productData += `${i + 1}. ${
               r.review_title
@@ -166,10 +149,8 @@ async function enhanceMessageWithProductData(message: string): Promise<string> {
         console.log(`[Data] Found stats for ${productName} category`);
       }
     } else if (intent === "email_request") {
-      // Special handling for email requests - extract product from context or message
       let productName = extractedEntities.productName;
 
-      // If product name is generic ("this product", "it", etc.), look in conversation history
       if (!productName || productName.match(/^(this|that|it|the product)$/i)) {
         productName = undefined;
       }
@@ -194,7 +175,6 @@ Please provide a helpful response based on the product data above. Format your r
       "[Data Error]",
       error instanceof Error ? error.message : String(error)
     );
-    // If data fetching fails, continue with original message
   }
 
   return enhancedPrompt;
@@ -212,7 +192,6 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Check if Gemini API key is configured
     if (!process.env.GEMINI_API_TOKEN) {
       console.error("GEMINI_API_TOKEN is not configured");
       return new Response(
@@ -229,10 +208,8 @@ export async function POST(request: NextRequest) {
       message.substring(0, 50) + "..."
     );
 
-    // Enhance message with product data if applicable
     const enhancedMessage = await enhanceMessageWithProductData(message);
 
-    // Check if it's an email request (returns JSON string)
     if (enhancedMessage.startsWith('{"type":"email_request"')) {
       console.log("[EMAIL] Detected email request, returning JSON response");
       const emailRequestData = JSON.parse(enhancedMessage);
@@ -257,22 +234,18 @@ export async function POST(request: NextRequest) {
       conversationHistory
     );
 
-    // Create a readable stream for the response with consistent speed
     const encoder = new TextEncoder();
     const readableStream = new ReadableStream({
       async start(controller) {
         try {
           let fullResponse = "";
 
-          // Collect full response first
           for await (const chunk of stream) {
             fullResponse += chunk.text();
           }
 
-          // Clean markdown formatting
           fullResponse = cleanMarkdownFormatting(fullResponse);
 
-          // Stream with consistent speed
           for (
             let i = 0;
             i < fullResponse.length;
@@ -284,7 +257,6 @@ export async function POST(request: NextRequest) {
             );
             controller.enqueue(encoder.encode(chunk));
 
-            // Add delay for consistent streaming speed
             if (i + STREAMING_CONFIG.CHARS_PER_CHUNK < fullResponse.length) {
               await new Promise((resolve) =>
                 setTimeout(resolve, STREAMING_CONFIG.DELAY_MS)

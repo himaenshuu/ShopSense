@@ -1,27 +1,13 @@
-/**
- * Email Service using SendGrid
- * Generates AI-powered product emails and sends them via SendGrid
- */
-
 import sgMail from "@sendgrid/mail";
 import { getGeminiModel } from "./gemini";
-
-// ============================================================================
-// CONFIGURATION
-// ============================================================================
 
 const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY || "";
 const FROM_EMAIL = process.env.SENDGRID_FROM_EMAIL || "noreply@yourapp.com";
 const FROM_NAME = process.env.SENDGRID_FROM_NAME || "Product Assistant";
 
-// Initialize SendGrid
 if (SENDGRID_API_KEY) {
   sgMail.setApiKey(SENDGRID_API_KEY);
 }
-
-// ============================================================================
-// TYPE DEFINITIONS
-// ============================================================================
 
 export interface ProductEmailData {
   productName: string;
@@ -45,14 +31,6 @@ export interface EmailGenerationResult {
   ratingExplanation: string;
 }
 
-// ============================================================================
-// EMAIL GENERATION WITH GEMINI
-// ============================================================================
-
-/**
- * Generate overall product rating using Gemini AI
- * Analyzes all reviews to calculate a fair rating with explanation
- */
 async function generateOverallRating(
   reviews: ProductEmailData["reviews"]
 ): Promise<{ rating: number; explanation: string }> {
@@ -92,7 +70,6 @@ Be fair and balanced. Consider review sentiments, specific ratings, and overall 
       };
     }
 
-    // Fallback: calculate average
     const avgRating =
       reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
     return {
@@ -102,7 +79,6 @@ Be fair and balanced. Consider review sentiments, specific ratings, and overall 
     };
   } catch (error) {
     console.error("Error generating rating:", error);
-    // Fallback calculation
     const avgRating =
       reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
     return {
@@ -112,19 +88,14 @@ Be fair and balanced. Consider review sentiments, specific ratings, and overall 
   }
 }
 
-/**
- * Generate beautifully formatted email content using Gemini AI
- */
 export async function generateProductEmail(
   productData: ProductEmailData
 ): Promise<EmailGenerationResult> {
   try {
-    // Step 1: Generate overall rating with Gemini
     const { rating, explanation } = await generateOverallRating(
       productData.reviews
     );
 
-    // Step 2: Generate email content with Gemini
     const model = getGeminiModel();
 
     const prompt = `Create a beautiful, professional product email for the following product.
@@ -193,7 +164,6 @@ Make it visually appealing, use emojis appropriately, and keep it professional b
   } catch (error) {
     console.error("Error generating email:", error);
 
-    // Fallback email generation
     const avgRating =
       productData.reviews.reduce((sum, r) => sum + r.rating, 0) /
       productData.reviews.length;
@@ -265,21 +235,12 @@ This email was generated based on customer reviews and ratings.
   }
 }
 
-// ============================================================================
-// EMAIL SENDING
-// ============================================================================
-
-/**
- * Send email using SendGrid
- * Reference: https://docs.sendgrid.com/for-developers/sending-email/v3-nodejs-code-example
- */
 export async function sendProductEmail(
   recipientEmail: string,
   recipientName: string,
   emailContent: EmailGenerationResult
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
   try {
-    // Check if SendGrid API key is configured
     if (!SENDGRID_API_KEY) {
       console.error("[Email] SENDGRID_API_KEY is not configured");
       return {
@@ -292,7 +253,6 @@ export async function sendProductEmail(
     console.log(`[Email] Attempting to send email to: ${recipientEmail}`);
     console.log(`[Email] Subject: ${emailContent.subject}`);
 
-    // Prepare email message
     const msg = {
       to: {
         email: recipientEmail,
@@ -303,11 +263,10 @@ export async function sendProductEmail(
         name: FROM_NAME,
       },
       subject: emailContent.subject,
-      text: emailContent.textContent, // Plain text fallback
-      html: emailContent.htmlContent, // HTML content
+      text: emailContent.textContent,
+      html: emailContent.htmlContent,
     };
 
-    // Send email via SendGrid
     const [response] = await sgMail.send(msg);
 
     console.log(
@@ -322,12 +281,10 @@ export async function sendProductEmail(
   } catch (error: unknown) {
     console.error("[Email] Error sending email:", error);
 
-    // Log detailed error information
     if (error instanceof Error) {
       console.error("[Email] Error message:", error.message);
     }
 
-    // Handle SendGrid specific errors
     if (typeof error === "object" && error !== null && "response" in error) {
       const sgError = error as { response?: { body?: unknown } };
       console.error("[Email] SendGrid error details:", sgError.response?.body);
@@ -340,9 +297,6 @@ export async function sendProductEmail(
   }
 }
 
-/**
- * Main function: Generate and send product email
- */
 export async function generateAndSendProductEmail(
   recipientEmail: string,
   recipientName: string,
@@ -353,10 +307,8 @@ export async function generateAndSendProductEmail(
   error?: string;
 }> {
   try {
-    // Generate email content with Gemini
     const emailContent = await generateProductEmail(productData);
 
-    // Send email via Appwrite
     const sendResult = await sendProductEmail(
       recipientEmail,
       recipientName,

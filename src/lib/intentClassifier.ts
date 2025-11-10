@@ -1,21 +1,12 @@
-/**
- * Query Intent Classifier
- *
- * Determines whether a user query requires:
- * - CSV data (product info, prices, reviews)
- * - LLM only (general questions, explanations)
- * - Hybrid (data + LLM analysis)
- */
-
 export type QueryIntent =
-  | "product_price" // "What is the price of X?"
-  | "product_reviews" // "Show me reviews of X"
-  | "product_info" // "Tell me about X product"
-  | "product_comparison" // "Compare X vs Y"
-  | "product_search" // "Best USB cables", "Top rated headphones"
-  | "email_request" // "Email me details of X", "Send product info to email"
-  | "general_question" // "What is USB-C?", "How does charging work?"
-  | "greeting" // "Hello", "Hi"
+  | "product_price"
+  | "product_reviews"
+  | "product_info"
+  | "product_comparison"
+  | "product_search"
+  | "email_request"
+  | "general_question"
+  | "greeting"
   | "unknown";
 
 export interface IntentClassification {
@@ -31,9 +22,6 @@ export interface IntentClassification {
   reasoning?: string;
 }
 
-/**
- * Intent patterns with keywords and regex
- */
 const INTENT_PATTERNS = {
   product_price: {
     keywords: [
@@ -159,9 +147,6 @@ const INTENT_PATTERNS = {
   },
 };
 
-/**
- * Extract limit number from query (e.g., "top 5", "show 10")
- */
 function extractLimit(query: string): number | undefined {
   const match = query.match(/(?:top|show|get|list)\s+(\d+)/i);
   if (match) {
@@ -171,9 +156,6 @@ function extractLimit(query: string): number | undefined {
   return undefined;
 }
 
-/**
- * Extract product name from query
- */
 function extractProductName(
   query: string,
   intent: QueryIntent
@@ -189,7 +171,6 @@ function extractProductName(
     }
   }
 
-  // Fallback: remove common question words
   const cleaned = query
     .replace(/^(?:what is|what's|show me|tell me|get|find)\s+/i, "")
     .replace(/\?$/, "")
@@ -198,9 +179,6 @@ function extractProductName(
   return cleaned.length > 0 ? cleaned : undefined;
 }
 
-/**
- * Extract price range from query
- */
 function extractPriceRange(
   query: string
 ): { min: number; max: number } | undefined {
@@ -233,10 +211,6 @@ function extractPriceRange(
   return undefined;
 }
 
-/**
- * Check if query is asking about a product in our database
- * (vs general knowledge question)
- */
 function isProductRelated(query: string): boolean {
   const productKeywords = [
     "cable",
@@ -266,9 +240,6 @@ function isProductRelated(query: string): boolean {
   return productKeywords.some((keyword) => lowerQuery.includes(keyword));
 }
 
-/**
- * Classify user query intent
- */
 export function classifyIntent(query: string): IntentClassification {
   if (!query || query.trim().length === 0) {
     return {
@@ -283,17 +254,14 @@ export function classifyIntent(query: string): IntentClassification {
   let bestIntent: QueryIntent = "unknown";
   let maxScore = 0;
 
-  // Check each intent
   for (const [intent, config] of Object.entries(INTENT_PATTERNS)) {
     let score = 0;
 
-    // Check keywords
     const keywordMatches = config.keywords.filter((kw) =>
       lowerQuery.includes(kw)
     );
     score += keywordMatches.length * 2;
 
-    // Check patterns
     const patternMatch = config.patterns?.some((p) => p.test(query));
     if (patternMatch) {
       score += 5;
@@ -305,22 +273,18 @@ export function classifyIntent(query: string): IntentClassification {
     }
   }
 
-  // If no clear intent but product-related, assume product_info
   if (maxScore === 0 && isProductRelated(query)) {
     bestIntent = "product_info";
     maxScore = 3;
   }
 
-  // If still unknown and has question words, assume general_question
   if (maxScore === 0 && /^(what|why|how|when|where|who)/i.test(query)) {
     bestIntent = "general_question";
     maxScore = 2;
   }
 
-  // Calculate confidence
   const confidence = Math.min(maxScore / 10, 1);
 
-  // Determine if data is required
   const dataRequiredIntents: QueryIntent[] = [
     "product_price",
     "product_reviews",
@@ -331,7 +295,6 @@ export function classifyIntent(query: string): IntentClassification {
   ];
   const requiresData = dataRequiredIntents.includes(bestIntent);
 
-  // Extract entities
   const extractedEntities: IntentClassification["extractedEntities"] = {
     productName: extractProductName(query, bestIntent),
     limit: extractLimit(query),
@@ -347,9 +310,6 @@ export function classifyIntent(query: string): IntentClassification {
   };
 }
 
-/**
- * Format intent classification as human-readable string
- */
 export function formatIntentClassification(
   classification: IntentClassification
 ): string {
@@ -374,9 +334,6 @@ export function formatIntentClassification(
   return result;
 }
 
-/**
- * Test intent classifier with examples
- */
 export function testIntentClassifier() {
   const testQueries = [
     "What is the price of boat rugged v3?",

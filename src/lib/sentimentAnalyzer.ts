@@ -1,25 +1,15 @@
-/**
- * Sentiment Analyzer using Gemini AI
- *
- * Analyzes sentiment of product reviews using Google's Gemini 2.0 Flash Lite model.
- * Returns sentiment score, label, and confidence with AI-powered reasoning.
- */
-
 import { getGeminiModel } from "./gemini";
 
 export interface SentimentResult {
-  score: number; // -1 (most negative) to 1 (most positive)
+  score: number;
   label: "positive" | "negative" | "neutral";
-  confidence: number; // 0-1, how confident we are in the classification
+  confidence: number;
   details: {
     reasoning: string;
     keyPhrases: string[];
   };
 }
 
-/**
- * Analyze sentiment of a single review using Gemini AI
- */
 export async function analyzeSentiment(text: string): Promise<SentimentResult> {
   try {
     const model = getGeminiModel("gemini-2.0-flash-lite");
@@ -47,14 +37,12 @@ Return ONLY the JSON object, nothing else.`;
     const result = await model.generateContent(prompt);
     const response = result.response.text();
 
-    // Clean up response (remove markdown code blocks if present)
     let jsonText = response.trim();
     jsonText = jsonText
       .replace(/```json\n?/g, "")
       .replace(/```\n?/g, "")
       .trim();
 
-    // Parse JSON response
     const parsed = JSON.parse(jsonText);
 
     return {
@@ -69,14 +57,10 @@ Return ONLY the JSON object, nothing else.`;
   } catch (error) {
     console.error("Error in Gemini sentiment analysis:", error);
 
-    // Fallback to simple lexicon-based analysis
     return fallbackSentimentAnalysis(text);
   }
 }
 
-/**
- * Fallback lexicon-based sentiment analysis if Gemini fails
- */
 function fallbackSentimentAnalysis(text: string): SentimentResult {
   const lowerText = text.toLowerCase();
 
@@ -137,15 +121,11 @@ function fallbackSentimentAnalysis(text: string): SentimentResult {
   };
 }
 
-/**
- * Analyze sentiment of multiple reviews in batch
- */
 export async function analyzeBatchSentiments(
   texts: string[]
 ): Promise<SentimentResult[]> {
   const results: SentimentResult[] = [];
 
-  // Process reviews in parallel (with limit to avoid rate limiting)
   const batchSize = 5;
   for (let i = 0; i < texts.length; i += batchSize) {
     const batch = texts.slice(i, i + batchSize);
@@ -158,9 +138,6 @@ export async function analyzeBatchSentiments(
   return results;
 }
 
-/**
- * Get aggregate statistics from multiple sentiment results
- */
 export function getSentimentStats(sentiments: SentimentResult[]) {
   if (sentiments.length === 0) {
     return {
@@ -199,9 +176,6 @@ export function getSentimentStats(sentiments: SentimentResult[]) {
   };
 }
 
-/**
- * Format sentiment result as human-readable string
- */
 export function formatSentiment(result: SentimentResult): string {
   const emoji =
     result.label === "positive"
@@ -222,9 +196,6 @@ export function formatSentiment(result: SentimentResult): string {
   );
 }
 
-/**
- * Test sentiment analyzer with sample reviews
- */
 export async function testSentimentAnalyzer() {
   const testReviews = [
     "This product is absolutely amazing! Best purchase I've made in years. Highly recommend!",

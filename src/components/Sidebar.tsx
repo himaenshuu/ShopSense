@@ -89,34 +89,27 @@ export function Sidebar({
     setEditingTitle("");
   };
 
-  // Truncate chat title to max 20 characters (shorter)
   const truncateTitle = (title: string, maxLength: number = 20) => {
     if (title.length <= maxLength) return title;
     return title.substring(0, maxLength) + "...";
   };
 
-  // Track new chats for animation
   React.useEffect(() => {
     const currentIds = chats.map((chat) => chat.$id);
     const newChats = currentIds.filter((id) => !previousChatIds.includes(id));
 
     if (newChats.length > 0) {
-      // New chat detected - mark it for animation
       setNewChatId(newChats[0]);
-      // Clear the new chat marker after animation completes (400ms animation + 50ms buffer)
       const timer = setTimeout(() => setNewChatId(null), 450);
       setPreviousChatIds(currentIds);
       return () => clearTimeout(timer);
     } else if (previousChatIds.length === 0) {
-      // Initial load - no animation
       setPreviousChatIds(currentIds);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chats]);
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full bg-[#202123] dark:bg-[#202123] transition-colors duration-200">
-      {/* New Chat Button */}
       <div className="p-4 border-b border-gray-700">
         <Button
           onClick={() => {
@@ -167,7 +160,6 @@ export function Sidebar({
                   <MessageSquare className="w-4 h-4 flex-shrink-0" />
 
                   {editingChatId === chat.$id ? (
-                    // Rename mode
                     <div
                       className="flex-1 flex items-center gap-2"
                       onClick={(e) => e.stopPropagation()}
@@ -201,7 +193,6 @@ export function Sidebar({
                       </button>
                     </div>
                   ) : (
-                    // Normal mode
                     <>
                       <span
                         className="flex-1 text-sm cursor-pointer pr-2 overflow-hidden text-ellipsis whitespace-nowrap"

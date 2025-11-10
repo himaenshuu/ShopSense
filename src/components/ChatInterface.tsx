@@ -35,14 +35,12 @@ export function ChatInterface() {
     if (user && !isGuest) {
       loadChats();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, isGuest]);
 
   useEffect(() => {
     if (currentChatId) {
       loadMessages(currentChatId);
     } else {
-      // Load guest messages from localStorage
       if (isGuest) {
         const guestMessages = JSON.parse(
           localStorage.getItem("guest_messages") || "[]"
@@ -99,11 +97,9 @@ export function ChatInterface() {
     setIsGenerating(true);
     setLastUserMessage(content);
 
-    // Create new AbortController for this request
     abortControllerRef.current = new AbortController();
 
     try {
-      // Create chat if it doesn't exist
       let chatId = currentChatId;
 
       if (!chatId && user && !isGuest) {
@@ -114,7 +110,6 @@ export function ChatInterface() {
         await loadChats();
       }
 
-      // Add user message
       const userMessage: Message =
         isGuest || !chatId
           ? {
@@ -128,13 +123,11 @@ export function ChatInterface() {
 
       setMessages((prev) => [...prev, userMessage]);
 
-      // Save guest messages to localStorage
       if (isGuest) {
         const guestMessages = [...messages, userMessage];
         localStorage.setItem("guest_messages", JSON.stringify(guestMessages));
       }
 
-      // Create a temporary message for streaming
       const tempMessageId = "msg_temp_" + Date.now();
       const streamingMessage: Message = {
         $id: tempMessageId,
@@ -152,7 +145,6 @@ export function ChatInterface() {
         content: msg.content,
       }));
 
-      // Call Gemini API with streaming
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: {
@@ -169,18 +161,14 @@ export function ChatInterface() {
         throw new Error("Failed to get AI response");
       }
 
-      // Check if it's an email request (JSON response) BEFORE reading stream
       const contentType = response.headers.get("content-type");
 
-      // Check for JSON response (email request)
       if (contentType?.includes("application/json")) {
-        // Remove temp message first
         setMessages((prev) => prev.filter((msg) => msg.$id !== tempMessageId));
 
         const emailData = await response.json();
 
         if (emailData.type === "email_request") {
-          // Check if we need more context (user said "this product" but no product discussed)
           if (emailData.needsContext) {
             const systemMessage: Message = {
               $id: "msg_" + Date.now(),
@@ -214,8 +202,6 @@ export function ChatInterface() {
           // Show email dialog
           setEmailProductName(emailData.productName);
           setEmailDialogOpen(true);
-
-          // Add a system message
           const systemMessage: Message = {
             $id: "msg_" + Date.now(),
             chatId: chatId || "guest",
@@ -247,7 +233,6 @@ export function ChatInterface() {
         }
       }
 
-      // Handle streaming response (non-JSON)
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
       let accumulatedContent = "";
@@ -270,19 +255,15 @@ export function ChatInterface() {
               "[DEBUG] Detected JSON in stream, parsing as email request"
             );
             try {
-              // Try to parse complete JSON
               const emailData = JSON.parse(accumulatedContent);
               if (emailData.type === "email_request") {
-                // Remove temp message
                 setMessages((prev) =>
                   prev.filter((msg) => msg.$id !== tempMessageId)
                 );
 
-                // Show email dialog
                 setEmailProductName(emailData.productName);
                 setEmailDialogOpen(true);
 
-                // Add system message
                 const systemMessage: Message = {
                   $id: "msg_" + Date.now(),
                   chatId: chatId || "guest",
@@ -330,9 +311,7 @@ export function ChatInterface() {
         }
       }
 
-      // Save the final AI message to database or localStorage
       if (isGuest || !chatId) {
-        // Update localStorage for guest
         const guestMessages = [
           ...messages,
           userMessage,
@@ -340,13 +319,11 @@ export function ChatInterface() {
         ];
         localStorage.setItem("guest_messages", JSON.stringify(guestMessages));
       } else {
-        // Save to Appwrite
         const savedMessage = await appwrite.createMessage(
           chatId,
           "assistant",
           accumulatedContent
         );
-        // Replace temp message with saved message
         setMessages((prev) =>
           prev.map((msg) => (msg.$id === tempMessageId ? savedMessage : msg))
         );
@@ -357,7 +334,6 @@ export function ChatInterface() {
     } catch (error: unknown) {
       const err = error as Error;
       if (err.name === "AbortError") {
-        // Request was aborted by user
         toast.info("Generation stopped");
       } else {
         console.error("Error sending message:", error);
