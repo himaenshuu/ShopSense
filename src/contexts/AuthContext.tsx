@@ -15,7 +15,6 @@
  * ✅ Auto-login on page load
  */
 
-
 import React, {
   createContext,
   useContext,
@@ -38,6 +37,10 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   continueAsGuest: () => void;
   loginWithGoogle: () => Promise<void>;
+  loginWithAmazon: () => Promise<void>;
+  sendVerificationEmail: () => Promise<void>;
+  verifyEmail: (userId: string, secret: string) => Promise<void>;
+  isEmailVerified: () => Promise<boolean>;
 }
 
 // ============================================================================
@@ -179,6 +182,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  /**
+   * Login with Amazon OAuth
+   * Redirects user to Amazon sign-in page
+   */
+  async function loginWithAmazon() {
+    try {
+      const successUrl =
+        typeof window !== "undefined" ? window.location.origin : "";
+      const failureUrl =
+        typeof window !== "undefined" ? window.location.origin : "";
+      await appwrite.loginWithAmazon(successUrl, failureUrl);
+    } catch (error) {
+      console.error("Amazon OAuth error:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Send OTP verification email
+   */
+  async function sendVerificationEmail() {
+    try {
+      await appwrite.sendVerificationEmail();
+    } catch (error) {
+      console.error("Error sending verification email:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Verify email with OTP code
+   */
+  async function verifyEmail(userId: string, secret: string) {
+    try {
+      await appwrite.verifyEmail(userId, secret);
+      // Refresh user data after verification
+      await checkUser();
+    } catch (error) {
+      console.error("Error verifying email:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Check if email is verified
+   */
+  async function isEmailVerified() {
+    return await appwrite.isEmailVerified();
+  }
+
   return (
     <AuthContext.Provider
       value={{
@@ -190,6 +243,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signOut,
         continueAsGuest,
         loginWithGoogle,
+        loginWithAmazon,
+        sendVerificationEmail,
+        verifyEmail,
+        isEmailVerified,
       }}
     >
       {children}

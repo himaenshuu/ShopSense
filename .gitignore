@@ -73,3 +73,5 @@ next-env.d.ts
 # Misc
 .vercel
 *.pem
+
+data

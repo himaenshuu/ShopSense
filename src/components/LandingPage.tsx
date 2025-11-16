@@ -13,15 +13,28 @@ import { useAuth } from "../contexts/AuthContext";
 import { toast } from "sonner";
 import { DocumentationPage } from "./DocumentationPage";
 import { ThemeToggle } from "./ThemeToggle";
+import { OTPVerification } from "./OTPVerification";
 
 export function LandingPage() {
-  const { signIn, signUp, continueAsGuest, loginWithGoogle } = useAuth();
+  const {
+    signIn,
+    signUp,
+    continueAsGuest,
+    loginWithGoogle,
+    loginWithAmazon,
+    sendVerificationEmail,
+    verifyEmail,
+  } = useAuth();
+
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showDocs, setShowDocs] = useState(false);
+  const [showOTPVerification, setShowOTPVerification] = useState(false);
+  const [pendingUserId, setPendingUserId] = useState("");
+  const [pendingEmail, setPendingEmail] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,17 +42,53 @@ export function LandingPage() {
 
     try {
       if (isSignUp) {
+        // Sign up new user
         await signUp(email, password, name);
-        toast.success("Account created successfully!");
+
+        // Send verification email
+        await sendVerificationEmail();
+
+        // Show OTP verification screen
+        setPendingEmail(email);
+        setPendingUserId("current"); // Appwrite uses "current" for logged-in user
+        setShowOTPVerification(true);
+
+        toast.success("Account created! Please verify your email.");
       } else {
+        // Sign in existing user
         await signIn(email, password);
         toast.success("Signed in successfully!");
       }
-    } catch {
-      toast.error(isSignUp ? "Failed to create account" : "Failed to sign in");
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "An error occurred";
+      toast.error(
+        isSignUp
+          ? `Failed to create account: ${errorMessage}`
+          : `Failed to sign in: ${errorMessage}`
+      );
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleOTPVerify = async (userId: string, otp: string) => {
+    await verifyEmail(userId, otp);
+    // After successful verification, user is already logged in
+    setShowOTPVerification(false);
+  };
+
+  const handleOTPResend = async () => {
+    await sendVerificationEmail();
+  };
+
+  const handleBackToLogin = () => {
+    setShowOTPVerification(false);
+    setPendingEmail("");
+    setPendingUserId("");
+    setEmail("");
+    setPassword("");
+    setName("");
   };
 
   const handleGuestMode = () => {
@@ -57,8 +106,36 @@ export function LandingPage() {
     }
   };
 
+  const handleAmazonSignIn = async () => {
+    try {
+      await loginWithAmazon();
+      // User will be redirected to Amazon OAuth, then back to the app
+    } catch (error) {
+      console.error("Amazon sign-in error:", error);
+      toast.error("Failed to sign in with Amazon");
+    }
+  };
+
   if (showDocs) {
     return <DocumentationPage onBack={() => setShowDocs(false)} />;
+  }
+
+  // Show OTP verification screen
+  if (showOTPVerification) {
+    return (
+      <div className="min-h-screen bg-[#F7F7F8] dark:bg-[#1a1a1a] flex items-center justify-center p-4 relative transition-colors duration-200">
+        <div className="fixed top-4 right-4 z-10">
+          <ThemeToggle className="bg-white dark:bg-[#2d2d2d] hover:bg-gray-50 dark:hover:bg-[#3a3a3a] border border-gray-200 dark:border-gray-700 shadow-sm" />
+        </div>
+        <OTPVerification
+          email={pendingEmail}
+          userId={pendingUserId}
+          onVerify={handleOTPVerify}
+          onResend={handleOTPResend}
+          onBack={handleBackToLogin}
+        />
+      </div>
+    );
   }
 
   return (
@@ -84,10 +161,10 @@ export function LandingPage() {
               <MessageSquare className="w-8 h-8 text-white" />
             </div>
             <h1 className="text-2xl font-semibold text-[#202123] dark:text-[#ececf1] mb-2">
-              Welcome to ChatAI
+              Welcome to ShopSense
             </h1>
             <p className="text-[#6e6e80] dark:text-[#9b9ba5]">
-              Log in with your OpenAI account to continue
+              Log in with your ShopSense account to continue
             </p>
           </div>
 
@@ -209,6 +286,25 @@ export function LandingPage() {
               />
             </svg>
             Continue with Google
+          </Button>
+
+          {/* Amazon Sign In */}
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full rounded-lg h-12 border-gray-300 dark:border-gray-600 text-[#202123] dark:text-[#ececf1] hover:bg-gray-50 dark:hover:bg-[#40414f] transition-all duration-200 font-medium mt-3"
+            onClick={handleAmazonSignIn}
+          >
+            <svg
+              className="w-5 h-5 mr-3"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+            >
+              <path d="M14.09 20.36c-2.99 1.65-6.53 2.54-9.87 2.54-4.67 0-8.87-1.73-12.05-4.6-.25-.23-.03-.54.28-.36 3.48 2.02 7.78 3.24 12.22 3.24 3 0 6.29-.62 9.32-1.91.46-.19.84.3.4.63z" />
+              <path d="M15.35 18.81c-.38-.49-2.53-.23-3.5-.12-.29.04-.34-.22-.07-.41 1.71-1.2 4.51-.85 4.84-.45.33.4-.09 3.19-1.68 4.52-.24.2-.47.09-.36-.17.36-.89 1.15-2.88.77-3.37z" />
+              <path d="M13.78 3.09V1.78c0-.2.15-.33.33-.33h5.89c.19 0 .34.15.34.33v1.12c0 .19-.16.43-.44.82l-3.05 4.36c1.13-.03 2.33.14 3.36.71.23.13.29.32.31.51v1.4c0 .19-.21.41-.43.3-1.79-.94-4.16-1.04-6.14.01-.2.11-.42-.11-.42-.3v-1.33c0-.22 0-.59.22-.92l3.54-5.07h-3.08c-.19 0-.34-.14-.34-.33z" />
+            </svg>
+            Continue with Amazon
           </Button>
 
           {/* Divider */}

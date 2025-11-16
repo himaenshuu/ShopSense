@@ -30,6 +30,9 @@ export function ChatInterface() {
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [emailProductName, setEmailProductName] = useState<string>("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (user && !isGuest) {
@@ -53,6 +56,13 @@ export function ChatInterface() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Cleanup audio on component unmount
+  useEffect(() => {
+    return () => {
+      handleStopSpeaking();
+    };
+  }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -414,7 +424,8 @@ export function ChatInterface() {
     try {
       await signOut();
       toast.success("Signed out successfully");
-    } catch {
+    } catch (error) {
+      console.error("Sign out error:", error);
       toast.error("Failed to sign out");
     }
     setShowSignOutModal(false);
@@ -424,6 +435,178 @@ export function ChatInterface() {
     // This would typically trigger a navigation back to the landing page
     // For now, we'll just sign out which will return them to the landing
     signOut();
+  }
+
+  function handleVoiceInput(transcript: string) {
+    // Voice input captured, can be sent automatically or wait for user confirmation
+    console.log("Voice transcript:", transcript);
+  }
+
+  function handleStopSpeaking() {
+    if (audioRef.current) {
+      try {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+        audioRef.current.src = "";
+        audioRef.current.load();
+      } catch (error) {
+        console.error("Error stopping audio:", error);
+      }
+      audioRef.current = null;
+    }
+    if (audioUrlRef.current) {
+      try {
+        URL.revokeObjectURL(audioUrlRef.current);
+      } catch (error) {
+        console.error("Error revoking URL:", error);
+      }
+      audioUrlRef.current = null;
+    }
+    setIsSpeaking(false);
+  }
+
+  async function handleTextToSpeech(text: string) {
+    try {
+      // Stop any ongoing speech first
+      handleStopSpeaking();
+
+      setIsSpeaking(true);
+
+      const response = await fetch("/api/text-to-speech", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          text,
+          voice: "Zephyr",
+          tone: "warm, welcoming",
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to generate speech");
+      }
+
+      const { audio } = await response.json();
+
+      if (!audio) {
+        throw new Error("No audio data received");
+      }
+
+      // Decode base64 audio data
+      const binaryString = atob(audio);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+
+      // Create WAV header for PCM data (24kHz, 16-bit, mono)
+      const sampleRate = 24000;
+      const numChannels = 1;
+      const bitsPerSample = 16;
+      const byteRate = sampleRate * numChannels * (bitsPerSample / 8);
+      const blockAlign = numChannels * (bitsPerSample / 8);
+      const dataSize = bytes.length;
+
+      const wavHeader = new Uint8Array(44);
+      const view = new DataView(wavHeader.buffer);
+
+      // "RIFF" chunk descriptor
+      view.setUint32(0, 0x52494646, false); // "RIFF"
+      view.setUint32(4, 36 + dataSize, true); // File size - 8
+      view.setUint32(8, 0x57415645, false); // "WAVE"
+
+      // "fmt" sub-chunk
+      view.setUint32(12, 0x666d7420, false); // "fmt "
+      view.setUint32(16, 16, true); // Subchunk1Size (16 for PCM)
+      view.setUint16(20, 1, true); // AudioFormat (1 for PCM)
+      view.setUint16(22, numChannels, true); // NumChannels
+      view.setUint32(24, sampleRate, true); // SampleRate
+      view.setUint32(28, byteRate, true); // ByteRate
+      view.setUint16(32, blockAlign, true); // BlockAlign
+      view.setUint16(34, bitsPerSample, true); // BitsPerSample
+
+      // "data" sub-chunk
+      view.setUint32(36, 0x64617461, false); // "data"
+      view.setUint32(40, dataSize, true); // Subchunk2Size
+
+      // Combine header and audio data
+      const wavFile = new Uint8Array(wavHeader.length + bytes.length);
+      wavFile.set(wavHeader, 0);
+      wavFile.set(bytes, wavHeader.length);
+
+      // Create blob with proper WAV format
+      const audioBlob = new Blob([wavFile], { type: "audio/wav" });
+      const audioUrl = URL.createObjectURL(audioBlob);
+      audioUrlRef.current = audioUrl;
+
+      const audioElement = new Audio(audioUrl);
+      audioRef.current = audioElement;
+
+      audioElement.onended = () => {
+        setIsSpeaking(false);
+        if (audioUrlRef.current) {
+          try {
+            URL.revokeObjectURL(audioUrlRef.current);
+          } catch (error) {
+            console.error("Error revoking URL on end:", error);
+          }
+          audioUrlRef.current = null;
+        }
+        audioRef.current = null;
+      };
+
+      audioElement.onerror = (e) => {
+        console.error("Audio playback error:", e);
+        setIsSpeaking(false);
+        toast.error("Failed to play audio");
+        if (audioUrlRef.current) {
+          try {
+            URL.revokeObjectURL(audioUrlRef.current);
+          } catch (error) {
+            console.error("Error revoking URL on error:", error);
+          }
+          audioUrlRef.current = null;
+        }
+        audioRef.current = null;
+      };
+
+      try {
+        await audioElement.play();
+      } catch (playError) {
+        console.error("Error playing audio:", playError);
+        setIsSpeaking(false);
+        if (audioUrlRef.current) {
+          try {
+            URL.revokeObjectURL(audioUrlRef.current);
+          } catch (error) {
+            console.error("Error revoking URL after play error:", error);
+          }
+          audioUrlRef.current = null;
+        }
+        audioRef.current = null;
+        throw playError;
+      }
+    } catch (error) {
+      console.error("Error in text-to-speech:", error);
+      toast.error("Failed to generate speech");
+      setIsSpeaking(false);
+      if (audioUrlRef.current) {
+        try {
+          URL.revokeObjectURL(audioUrlRef.current);
+        } catch (cleanupError) {
+          console.error("Error revoking URL in catch:", cleanupError);
+        }
+        audioUrlRef.current = null;
+      }
+    }
+  }
+
+  async function handleWelcomeMessage() {
+    const welcomeText =
+      "Hello! I'm excited to help you discover amazing products and find exactly what you're looking for. Whether you need product recommendations, want to compare items, check customer reviews, or get detailed specifications, I'm here to make your shopping experience effortless and enjoyable. Just tell me what you're interested in, and let's get started!";
+    await handleTextToSpeech(welcomeText);
   }
 
   if (showDocs) {
@@ -461,7 +644,7 @@ export function ChatInterface() {
             <Menu className="w-5 h-5" />
           </Button>
           <h1 className="text-xl font-semibold text-[#202123] dark:text-[#ececf1]">
-            ChatAI
+            ShopSense
           </h1>
         </header>
 
@@ -493,73 +676,73 @@ export function ChatInterface() {
                   Start a conversation or try one of the examples below
                 </p>
 
-                {/* Example Prompts - ChatGPT Style */}
+                {/* Example Prompts - ShopSense Style */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-2xl mx-auto">
                   <button
                     onClick={() =>
                       handleSendMessage(
-                        "Explain quantum computing in simple terms"
+                        "Show me the top five best smartphones with excellent ratings"
                       )
                     }
                     disabled={isLoading}
                     className="p-4 bg-white dark:bg-[#444654] rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-[#505162] transition-all duration-200 text-left group disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <p className="text-sm font-medium text-[#202123] dark:text-[#ececf1] mb-1">
-                      Explain a concept
+                      Budget Smartphones
                     </p>
                     <p className="text-xs text-[#6e6e80] dark:text-[#9b9ba5]">
-                      Quantum computing in simple terms →
+                      Best value for money →
                     </p>
                   </button>
 
                   <button
                     onClick={() =>
                       handleSendMessage(
-                        "Write a creative story about a robot learning emotions"
+                        "What do customers love and dislike about this product? Show me the sentiment analysis"
                       )
                     }
                     disabled={isLoading}
                     className="p-4 bg-white dark:bg-[#444654] rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-[#505162] transition-all duration-200 text-left group disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <p className="text-sm font-medium text-[#202123] dark:text-[#ececf1] mb-1">
-                      Get creative
+                      Product Sentiment
                     </p>
                     <p className="text-xs text-[#6e6e80] dark:text-[#9b9ba5]">
-                      Story about a robot learning emotions →
+                      Customer opinions & reviews →
                     </p>
                   </button>
 
                   <button
                     onClick={() =>
                       handleSendMessage(
-                        "Help me plan a healthy meal for the week"
+                        "Compare popular wireless earbuds under 5000 rupees"
                       )
                     }
                     disabled={isLoading}
                     className="p-4 bg-white dark:bg-[#444654] rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-[#505162] transition-all duration-200 text-left group disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <p className="text-sm font-medium text-[#202123] dark:text-[#ececf1] mb-1">
-                      Make a plan
+                      Product Comparison
                     </p>
                     <p className="text-xs text-[#6e6e80] dark:text-[#9b9ba5]">
-                      Healthy meal planning for the week →
+                      Side by side features →
                     </p>
                   </button>
 
                   <button
                     onClick={() =>
                       handleSendMessage(
-                        "Teach me a new skill I can learn in 30 minutes"
+                        "Email me detailed information about this product with price and specifications"
                       )
                     }
                     disabled={isLoading}
                     className="p-4 bg-white dark:bg-[#444654] rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-[#505162] transition-all duration-200 text-left group disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <p className="text-sm font-medium text-[#202123] dark:text-[#ececf1] mb-1">
-                      Learn something new
+                      Email Product Details
                     </p>
                     <p className="text-xs text-[#6e6e80] dark:text-[#9b9ba5]">
-                      Skill to learn in 30 minutes →
+                      Get info delivered →
                     </p>
                   </button>
                 </div>
@@ -577,57 +760,61 @@ export function ChatInterface() {
                     index === messages.length - 1 &&
                     message.role === "assistant"
                   }
+                  onSpeak={
+                    message.role === "assistant"
+                      ? handleTextToSpeech
+                      : undefined
+                  }
+                  isSpeaking={isSpeaking}
+                  onStopSpeaking={handleStopSpeaking}
                 />
               ))}
               <div ref={messagesEndRef} />
+
+              {/* Retry button - shown after assistant message */}
+              {!isGenerating &&
+                messages.length > 0 &&
+                messages[messages.length - 1]?.role === "assistant" && (
+                  <div className="flex justify-center py-4">
+                    <Button
+                      onClick={handleRetry}
+                      variant="outline"
+                      size="sm"
+                      disabled={isLoading}
+                      className="bg-white dark:bg-[#40414f] hover:bg-gray-100 dark:hover:bg-[#505162] border-gray-300 dark:border-gray-600 text-[#202123] dark:text-[#ececf1] rounded-lg"
+                    >
+                      <svg
+                        className="w-4 h-4 mr-2"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                        />
+                      </svg>
+                      Regenerate
+                    </Button>
+                  </div>
+                )}
             </div>
           )}
         </div>
 
-        {/* Stop/Retry Controls */}
-        {isGenerating && (
-          <div className="flex justify-center py-3 bg-[#F7F7F8] dark:bg-[#343541]">
-            <Button
-              onClick={handleStopGeneration}
-              variant="outline"
-              className="bg-white dark:bg-[#40414f] hover:bg-gray-100 dark:hover:bg-[#505162] border-gray-300 dark:border-gray-600 text-[#202123] dark:text-[#ececf1]"
-            >
-              <span className="w-2 h-2 bg-red-500 rounded-full mr-2"></span>
-              Stop generating
-            </Button>
-          </div>
-        )}
-
-        {!isGenerating &&
-          messages.length > 0 &&
-          messages[messages.length - 1]?.role === "assistant" && (
-            <div className="flex justify-center py-3 bg-[#F7F7F8] dark:bg-[#343541]">
-              <Button
-                onClick={handleRetry}
-                variant="outline"
-                disabled={isLoading}
-                className="bg-white dark:bg-[#40414f] hover:bg-gray-100 dark:hover:bg-[#505162] border-gray-300 dark:border-gray-600 text-[#202123] dark:text-[#ececf1]"
-              >
-                <svg
-                  className="w-4 h-4 mr-2"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                  />
-                </svg>
-                Retry
-              </Button>
-            </div>
-          )}
-
         {/* Input Area */}
-        <ChatInput onSend={handleSendMessage} disabled={isLoading} />
+        <ChatInput
+          onSend={handleSendMessage}
+          onStop={handleStopGeneration}
+          disabled={isLoading}
+          isGenerating={isGenerating}
+          onVoiceInput={handleVoiceInput}
+          isSpeaking={isSpeaking}
+          onPlayWelcome={handleWelcomeMessage}
+          onStopSpeaking={handleStopSpeaking}
+        />
       </div>
 
       {/* Sign Out Modal */}

@@ -211,6 +211,70 @@ class AppwriteService {
     }
   }
 
+  /**
+   * OAuth Login with Amazon
+   * Redirects user to Amazon OAuth consent screen
+   */
+  async loginWithAmazon(
+    successUrl?: string,
+    failureUrl?: string
+  ): Promise<void> {
+    try {
+      const success =
+        successUrl ||
+        (typeof window !== "undefined" ? window.location.origin : "");
+      const failure =
+        failureUrl ||
+        (typeof window !== "undefined" ? window.location.origin : "");
+
+      account.createOAuth2Session(OAuthProvider.Amazon, success, failure);
+    } catch (error) {
+      console.error("Error with Amazon OAuth:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Send verification email with OTP
+   * Called after user signs up with email/password
+   */
+  async sendVerificationEmail(): Promise<void> {
+    try {
+      const redirectUrl =
+        typeof window !== "undefined" ? window.location.origin : "";
+      await account.createVerification(redirectUrl);
+    } catch (error) {
+      console.error("Error sending verification email:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Verify email using the OTP code
+   * @param userId - User ID from the verification URL
+   * @param secret - Secret code from the verification URL or OTP input
+   */
+  async verifyEmail(userId: string, secret: string): Promise<void> {
+    try {
+      await account.updateVerification(userId, secret);
+    } catch (error) {
+      console.error("Error verifying email:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Check if current user's email is verified
+   */
+  async isEmailVerified(): Promise<boolean> {
+    try {
+      const user = await this.getCurrentUser();
+      return user?.emailVerification ?? false;
+    } catch {
+      return false;
+    }
+  }
+
   // ==========================================================================
   // CHAT MANAGEMENT
   // ==========================================================================

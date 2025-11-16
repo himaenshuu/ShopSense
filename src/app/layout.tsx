@@ -14,21 +14,76 @@ export const viewport: Viewport = {
   initialScale: 1,
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
+    { media: "(prefers-color-scheme: dark)", color: "#000000" },
   ],
 };
 
 // Metadata for SEO and social sharing
 export const metadata: Metadata = {
-  title: "ChatAI - Your Intelligent AI Assistant",
+  metadataBase: new URL("https://shopsense.example.com"),
+  title:
+    "ShopSense - AI-Powered Shopping Assistant | Smart Product Reviews & Recommendations",
   description:
-    "Chat interface with AI-powered responses, built with Next.js, Appwrite, and MongoDB",
-  keywords: ["AI", "Chat", "Assistant", "Next.js", "Appwrite"],
-  authors: [{ name: "Your Name" }],
+    "Discover products smarter with ShopSense. Get AI-powered product recommendations, sentiment analysis, price comparisons, and detailed reviews. Your intelligent shopping companion.",
+  keywords: [
+    "AI shopping assistant",
+    "product recommendations",
+    "price comparison",
+    "product reviews",
+    "sentiment analysis",
+    "smart shopping",
+    "e-commerce AI",
+    "product finder",
+  ],
+  authors: [{ name: "Himanshu Raj" }],
+  creator: "ShopSense Team",
+  publisher: "ShopSense",
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: "https://shopsense.example.com",
+    siteName: "ShopSense",
+    title: "ShopSense - AI Shopping Assistant",
+    description:
+      "Smart product discovery with AI recommendations, reviews, and price comparisons",
+    images: [
+      {
+        url: "https://shopsense.example.com/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "ShopSense - AI Shopping Assistant",
+        type: "image/png",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "ShopSense - AI Shopping Assistant",
+    description: "Smart product discovery with AI recommendations",
+    images: ["https://shopsense.example.com/twitter-image.png"],
+  },
   icons: {
     icon: "/logo.png",
     shortcut: "/logo.png",
     apple: "/logo.png",
+    other: {
+      rel: "apple-touch-icon-precomposed",
+      url: "/logo.png",
+    },
+  },
+  alternates: {
+    canonical: "https://shopsense.example.com",
   },
 };
 

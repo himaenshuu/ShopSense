@@ -109,13 +109,13 @@ export function Sidebar({
   }, [chats]);
 
   const SidebarContent = () => (
-    <div className="flex flex-col h-full bg-[#202123] dark:bg-[#202123] transition-colors duration-200">
-      <div className="p-4 border-b border-gray-700">
+    <div className="flex flex-col h-full bg-white dark:bg-[#202123] transition-colors duration-200">
+      <div className="p-4 border-b border-gray-200 dark:border-gray-700">
         <Button
           onClick={() => {
             onNewChat();
           }}
-          className="w-full bg-transparent hover:bg-gray-700 text-white border border-gray-600 rounded-lg justify-start gap-3 py-2.5 shadow-sm transition-all duration-200"
+          className="w-full bg-transparent hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-600 rounded-lg justify-start gap-3 py-2.5 shadow-sm transition-all duration-200"
           variant="outline"
         >
           <Plus className="w-5 h-5" />
@@ -134,7 +134,7 @@ export function Sidebar({
             </div>
           ) : chats.length === 0 ? (
             <div className="text-center py-12 px-2">
-              <p className="text-gray-400 text-sm leading-relaxed">
+              <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed">
                 No chats yet. Start a new conversation!
               </p>
             </div>
@@ -149,8 +149,8 @@ export function Sidebar({
                   key={chat.$id}
                   className={`group relative flex items-center gap-3 px-3 py-3 rounded-lg transition-all ${
                     currentChatId === chat.$id
-                      ? "bg-gray-700 text-white"
-                      : "hover:bg-gray-700 text-gray-300 hover:text-white"
+                      ? "bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white"
+                      : "hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
                   } ${isNewChat ? "animate-slideDown" : ""} ${
                     isExistingChat
                       ? "animate-slideDownExisting"
@@ -174,22 +174,22 @@ export function Sidebar({
                             handleCancelRename();
                           }
                         }}
-                        className="flex-1 h-8 text-sm bg-gray-600 border-gray-500 text-white focus:border-blue-500"
+                        className="flex-1 h-8 text-sm bg-gray-100 dark:bg-gray-600 border-gray-300 dark:border-gray-500 text-gray-900 dark:text-white focus:border-blue-500"
                         autoFocus
                       />
                       <button
                         onClick={() => handleSaveRename(chat.$id)}
-                        className="p-1.5 hover:bg-green-600 rounded transition-all duration-200"
+                        className="p-1.5 hover:bg-green-500 dark:hover:bg-green-600 rounded transition-all duration-200"
                         title="Save"
                       >
-                        <Check className="w-4 h-4 text-white" />
+                        <Check className="w-4 h-4 text-white dark:text-white" />
                       </button>
                       <button
                         onClick={handleCancelRename}
-                        className="p-1.5 hover:bg-red-600 rounded transition-all duration-200"
+                        className="p-1.5 hover:bg-red-500 dark:hover:bg-red-600 rounded transition-all duration-200"
                         title="Cancel"
                       >
-                        <X className="w-4 h-4 text-white" />
+                        <X className="w-4 h-4 text-white dark:text-white" />
                       </button>
                     </div>
                   ) : (
@@ -208,18 +208,18 @@ export function Sidebar({
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <button
-                            className="flex-shrink-0 hover:bg-gray-600 rounded transition-all duration-150 opacity-0 group-hover:opacity-100"
+                            className="flex-shrink-0 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-all duration-150 opacity-0 group-hover:opacity-100"
                             onClick={(e) => e.stopPropagation()}
                             title="More options"
                             aria-label="Chat options"
                           >
-                            <MoreHorizontal className="w-8 h-5 text-white" />
+                            <MoreHorizontal className="w-8 h-5 text-gray-700 dark:text-white" />
                           </button>
                         </DropdownMenuTrigger>
 
                         <DropdownMenuContent
                           align="end"
-                          className="bg-gray-800 border-gray-700 text-white z-[100]"
+                          className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white z-[100]"
                           sideOffset={5}
                         >
                           <DropdownMenuItem
@@ -237,7 +237,7 @@ export function Sidebar({
                               e.stopPropagation();
                               onShareChat(chat.$id);
                             }}
-                            className="cursor-pointer hover:bg-gray-700 focus:bg-gray-700 text-white"
+                            className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 focus:bg-gray-100 dark:focus:bg-gray-700 text-gray-900 dark:text-white"
                           >
                             <Share2 className="w-4 h-4 mr-2" />
                             Share
@@ -247,7 +247,7 @@ export function Sidebar({
                               e.stopPropagation();
                               setChatToDelete(chat.$id);
                             }}
-                            className="cursor-pointer hover:bg-red-600 focus:bg-red-600 text-red-400 hover:text-white focus:text-white"
+                            className="cursor-pointer hover:bg-red-500 dark:hover:bg-red-600 focus:bg-red-500 dark:focus:bg-red-600 text-red-600 dark:text-red-400 hover:text-white focus:text-white"
                           >
                             <Trash2 className="w-4 h-4 mr-2" />
                             Delete
@@ -264,31 +264,31 @@ export function Sidebar({
       </ScrollArea>
 
       {/* User Profile & Theme Toggle */}
-      <div className="p-4 border-t border-gray-700 space-y-3">
+      <div className="p-4 border-t border-gray-200 dark:border-gray-700 space-y-3">
         {/* Theme Toggle */}
         <ThemeToggle
-          className="w-full bg-transparent hover:bg-gray-700 text-white justify-start border-gray-600 py-2.5"
+          className="w-full bg-transparent hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-white justify-start border-gray-300 dark:border-gray-600 py-2.5"
           variant="outline"
           size="default"
           showLabel
         />
 
         {/* User Profile */}
-        <div className="flex items-center gap-3 px-3 py-3 rounded-lg bg-gray-700">
+        <div className="flex items-center gap-3 px-3 py-3 rounded-lg bg-gray-100 dark:bg-gray-700">
           <div className="w-9 h-9 rounded-full bg-[#10A37F] flex items-center justify-center flex-shrink-0 shadow-sm">
             <User className="w-4 h-4 text-white" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm text-white truncate font-medium">
+            <p className="text-sm text-gray-900 dark:text-white truncate font-medium">
               {isGuest ? "Guest User" : userEmail}
             </p>
           </div>
           <button
             onClick={onSignOut}
-            className="p-2 hover:bg-gray-600 rounded-lg transition-all duration-200"
+            className="p-2 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-all duration-200"
             title="Sign out"
           >
-            <LogOut className="w-4 h-4 text-white" />
+            <LogOut className="w-4 h-4 text-gray-700 dark:text-white" />
           </button>
         </div>
       </div>
@@ -301,7 +301,7 @@ export function Sidebar({
       <aside
         className={`${
           isOpen ? "w-[280px]" : "w-0"
-        } bg-[#202123] border-r border-gray-700 shadow-xl h-screen transition-all duration-300 ease-in-out overflow-hidden`}
+        } bg-white dark:bg-[#202123] border-r border-gray-200 dark:border-gray-700 shadow-xl h-screen transition-all duration-300 ease-in-out overflow-hidden`}
       >
         <SidebarContent />
       </aside>
