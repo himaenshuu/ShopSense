@@ -251,26 +251,42 @@ export async function POST(request: NextRequest) {
             i < fullResponse.length;
             i += STREAMING_CONFIG.CHARS_PER_CHUNK
           ) {
-            const chunk = fullResponse.slice(
-              i,
-              i + STREAMING_CONFIG.CHARS_PER_CHUNK
-            );
-            controller.enqueue(encoder.encode(chunk));
-
-            if (i + STREAMING_CONFIG.CHARS_PER_CHUNK < fullResponse.length) {
-              await new Promise((resolve) =>
-                setTimeout(resolve, STREAMING_CONFIG.DELAY_MS)
+            // Check if controller is still open before enqueuing
+            try {
+              const chunk = fullResponse.slice(
+                i,
+                i + STREAMING_CONFIG.CHARS_PER_CHUNK
               );
+              controller.enqueue(encoder.encode(chunk));
+
+              if (i + STREAMING_CONFIG.CHARS_PER_CHUNK < fullResponse.length) {
+                await new Promise((resolve) =>
+                  setTimeout(resolve, STREAMING_CONFIG.DELAY_MS)
+                );
+              }
+            } catch (enqueueError) {
+              // Controller closed (client disconnected), stop streaming
+              console.log("Stream closed by client");
+              break;
             }
           }
 
-          controller.close();
+          // Only close if not already closed
+          try {
+            controller.close();
+          } catch {
+            // Already closed, ignore
+          }
         } catch (error) {
           console.error("Streaming error:", error);
-          const errorMessage =
-            error instanceof Error ? error.message : String(error);
-          controller.enqueue(encoder.encode(`\n\n[Error: ${errorMessage}]`));
-          controller.close();
+          try {
+            const errorMessage =
+              error instanceof Error ? error.message : String(error);
+            controller.enqueue(encoder.encode(`\n\n[Error: ${errorMessage}]`));
+            controller.close();
+          } catch {
+            // Controller already closed, ignore
+          }
         }
       },
     });
