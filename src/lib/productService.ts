@@ -53,16 +53,49 @@ class ProductService {
   async searchProducts(query: string, limit: number = 10): Promise<Product[]> {
     const collection = await this.getCollection();
 
-    const results = await collection
+    // First, try exact match (case-insensitive)
+    const exactResults = await collection
       .find({
-        $text: { $search: query },
+        product_name: { $regex: new RegExp(`^${query}$`, "i") },
       })
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .sort({ score: { $meta: "textScore" } } as any)
       .limit(limit)
       .toArray();
 
-    return results as unknown as Product[];
+    if (exactResults.length > 0) {
+      console.log(
+        `[ProductService] Found ${exactResults.length} exact matches for: ${query}`
+      );
+      return exactResults as unknown as Product[];
+    }
+
+    // Fallback to text search with relevance scoring
+    const results = await collection
+      .find(
+        {
+          $text: { $search: query },
+        },
+        { projection: { score: { $meta: "textScore" } } }
+      )
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .sort({ score: { $meta: "textScore" } } as any)
+      .limit(limit * 2) // Get more results to filter by relevance
+      .toArray();
+
+    // Filter results by minimum relevance score (textScore > 1.0 is decent match)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const relevantResults = results.filter(
+      (doc: any) => doc.score && doc.score > 1.0
+    );
+
+    if (relevantResults.length > 0) {
+      console.log(
+        `[ProductService] Found ${relevantResults.length} relevant matches (score > 1.0) for: ${query}`
+      );
+    } else {
+      console.warn(`[ProductService] No relevant matches found for: ${query}`);
+    }
+
+    return relevantResults.slice(0, limit) as unknown as Product[];
   }
 
   async getProductById(productId: string): Promise<Product | null> {

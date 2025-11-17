@@ -172,9 +172,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function loginWithGoogle() {
     try {
       const successUrl =
-        typeof window !== "undefined" ? window.location.origin : "";
+        typeof window !== "undefined" ? `${window.location.origin}/home` : "";
       const failureUrl =
-        typeof window !== "undefined" ? window.location.origin : "";
+        typeof window !== "undefined" ? `${window.location.origin}/signIn` : "";
       await appwrite.loginWithGoogle(successUrl, failureUrl);
     } catch (error) {
       console.error("Google OAuth error:", error);
@@ -189,9 +189,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function loginWithAmazon() {
     try {
       const successUrl =
-        typeof window !== "undefined" ? window.location.origin : "";
+        typeof window !== "undefined" ? `${window.location.origin}/home` : "";
       const failureUrl =
-        typeof window !== "undefined" ? window.location.origin : "";
+        typeof window !== "undefined" ? `${window.location.origin}/signIn` : "";
       await appwrite.loginWithAmazon(successUrl, failureUrl);
     } catch (error) {
       console.error("Amazon OAuth error:", error);

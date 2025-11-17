@@ -25,17 +25,52 @@ export async function POST(request: NextRequest) {
 
     // Fetch product details from database
     const products = await productService.searchProducts(productName, 1);
+
     if (!products || products.length === 0) {
       return NextResponse.json(
-        { error: "Product not found in database" },
+        {
+          error: "Product not found",
+          message: `We couldn't find "${productName}" in our database. Please try searching for a similar product or check the product name.`,
+        },
         { status: 404 }
       );
     }
 
     const product = products[0];
 
-    // Fetch reviews - maximum 6 for email
-    const reviewsData = await productService.getProductReviews(productName, 6);
+    // Validate that the found product is actually relevant to the search
+    const productNameLower = product.product_name.toLowerCase();
+    const searchTerms = productName.toLowerCase().split(" ");
+    const matchCount = searchTerms.filter((term) =>
+      productNameLower.includes(term)
+    ).length;
+    const matchRatio = matchCount / searchTerms.length;
+
+    // If less than 40% of search terms match, the result is likely irrelevant
+    if (matchRatio < 0.4) {
+      console.warn(
+        `[Email API] Low relevance match: searched "${productName}", found "${
+          product.product_name
+        }" (${(matchRatio * 100).toFixed(0)}% match)`
+      );
+      return NextResponse.json(
+        {
+          error: "Product not found",
+          message: `We couldn't find an exact match for "${productName}". The closest product we found was "${product.product_name}", but it may not be what you're looking for. Please try a different search term.`,
+          suggestion: product.product_name,
+        },
+        { status: 404 }
+      );
+    }
+
+    console.log(
+      `[Email API] Found relevant product: "${
+        product.product_name
+      }" for search "${productName}" (${(matchRatio * 100).toFixed(0)}% match)`
+    );
+
+    // Fetch reviews - get more than needed to account for duplicates
+    const reviewsData = await productService.getProductReviews(productName, 50);
     if (!reviewsData || reviewsData.reviews.length === 0) {
       return NextResponse.json(
         { error: "No reviews found for this product" },
@@ -43,8 +78,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Pick maximum 6 reviews
-    const selectedReviews = reviewsData.reviews.slice(0, 6);
+    // Deduplicate reviews by review_id (some products have duplicate reviews in MongoDB)
+    const uniqueReviewsMap = new Map();
+    reviewsData.reviews.forEach((review) => {
+      if (review.review_id && !uniqueReviewsMap.has(review.review_id)) {
+        uniqueReviewsMap.set(review.review_id, review);
+      }
+    });
+    const uniqueReviews = Array.from(uniqueReviewsMap.values());
+
+    console.log(
+      `[Email API] Found ${reviewsData.reviews.length} total reviews, ${uniqueReviews.length} unique reviews`
+    );
+
+    // Pick maximum 6 unique reviews
+    const selectedReviews = uniqueReviews.slice(0, 6);
 
     // Analyze sentiments for each review
     const reviewTexts = selectedReviews.map((r) => r.review_content);

@@ -111,6 +111,7 @@ Product Details:
 - Overall Rating: ${rating}/5.0
 - Rating Explanation: ${explanation}
 - Number of Reviews: ${productData.reviews.length}
+- Product URL: ${productData.productUrl || "#"}
 
 Top Reviews:
 ${productData.reviews
@@ -131,8 +132,19 @@ Generate:
    - Overall rating with star emojis (⭐)
    - Rating explanation
    - Top 3-5 review highlights
+   - A prominent "Shop Now" button that links to the product URL
+     * Button style: background #4F46E5 (indigo), white text, rounded corners, padding 12px 32px
+     * Center-aligned, placed after reviews section
+     * Link to: ${productData.productUrl || "#"}
    - Professional closing
-3. Plain text version (no HTML tags)
+   - Footer with: "© 2025 ShopSense. Your AI-powered shopping assistant."
+3. Plain text version (no HTML tags, include product URL as plain text)
+
+IMPORTANT BRANDING GUIDELINES:
+- The email is sent by "ShopSense" - an AI-powered shopping assistant platform
+- Footer MUST say: "© 2025 ShopSense" (NOT the product brand name)
+- Any company references should be to "ShopSense", not the product manufacturer
+- Keep the product brand name only in product details, not in footer or company info
 
 Respond in JSON format:
 {
@@ -201,9 +213,21 @@ Make it visually appealing, use emojis appropriately, and keep it professional b
             .join("")}
         </div>
 
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${productData.productUrl || "#"}" 
+             style="display: inline-block; background-color: #4F46E5; color: white; text-decoration: none; padding: 12px 32px; border-radius: 8px; font-weight: bold; font-size: 16px;">
+            🛒 Shop Now
+          </a>
+        </div>
+
         <p style="color: #666; margin-top: 30px;">
           This email was generated based on customer reviews and ratings.
         </p>
+        
+        <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #E5E7EB; text-align: center; color: #9CA3AF; font-size: 14px;">
+          <p style="margin: 5px 0;">© 2025 ShopSense</p>
+          <p style="margin: 5px 0;">Your AI-powered shopping assistant</p>
+        </div>
       </div>
     `;
 
@@ -221,8 +245,13 @@ ${productData.reviews
   .map((r, i) => `${i + 1}. ${r.rating}/5 - ${r.review_content}`)
   .join("\n")}
 
+🛒 Shop Now: ${productData.productUrl || "Product link not available"}
+
 ---
 This email was generated based on customer reviews and ratings.
+
+© 2025 ShopSense
+Your AI-powered shopping assistant
     `.trim();
 
     return {

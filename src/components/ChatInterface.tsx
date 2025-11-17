@@ -12,9 +12,11 @@ import { appwrite, Chat, Message } from "../lib/appwrite";
 import { toast } from "sonner";
 import { MessageSquare, BookOpen, Menu } from "lucide-react";
 import { Button } from "./ui/button";
+import { useRouter } from "next/navigation";
 
 export function ChatInterface() {
   const { user, isGuest, signOut } = useAuth();
+  const router = useRouter();
   const [chats, setChats] = useState<Chat[]>([]);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -424,6 +426,7 @@ export function ChatInterface() {
     try {
       await signOut();
       toast.success("Signed out successfully");
+      router.push("/signIn");
     } catch (error) {
       console.error("Sign out error:", error);
       toast.error("Failed to sign out");
@@ -432,9 +435,9 @@ export function ChatInterface() {
   }
 
   function handleSignInFromGuest() {
-    // This would typically trigger a navigation back to the landing page
-    // For now, we'll just sign out which will return them to the landing
+    // Navigate to sign in page from guest mode
     signOut();
+    router.push("/signIn");
   }
 
   function handleVoiceInput(transcript: string) {

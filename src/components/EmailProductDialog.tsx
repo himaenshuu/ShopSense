@@ -46,13 +46,26 @@ export function EmailProductDialog({
   const [isSending, setIsSending] = useState(false);
   const [emailPreview, setEmailPreview] = useState<EmailPreview | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [lastProductName, setLastProductName] = useState<string>("");
 
-  // Generate email when dialog opens
+  // Reset email preview when dialog closes or product changes
   React.useEffect(() => {
-    if (open && !emailPreview && !isGenerating) {
-      generateEmail();
+    if (!open) {
+      // Reset state when dialog closes
+      setEmailPreview(null);
+      setError(null);
+      setLastProductName("");
     }
   }, [open]);
+
+  // Generate email when dialog opens or product changes
+  React.useEffect(() => {
+    if (open && productName && productName !== lastProductName) {
+      setLastProductName(productName);
+      setEmailPreview(null); // Clear old preview
+      generateEmail();
+    }
+  }, [open, productName]);
 
   const generateEmail = async () => {
     if (isGuest) {
@@ -212,7 +225,7 @@ export function EmailProductDialog({
             <div className="flex flex-col items-center justify-center py-12 space-y-4">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
               <p className="text-sm text-muted-foreground">
-                Generating email with AI...
+                Generating email. Please wait ⏳
               </p>
             </div>
           )}

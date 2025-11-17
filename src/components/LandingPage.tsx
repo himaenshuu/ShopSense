@@ -14,8 +14,13 @@ import { toast } from "sonner";
 import { DocumentationPage } from "./DocumentationPage";
 import { ThemeToggle } from "./ThemeToggle";
 import { OTPVerification } from "./OTPVerification";
+import { useRouter } from "next/navigation";
 
-export function LandingPage() {
+interface LandingPageProps {
+  initialMode?: "signin" | "signup";
+}
+
+export function LandingPage({ initialMode = "signin" }: LandingPageProps) {
   const {
     signIn,
     signUp,
@@ -25,8 +30,9 @@ export function LandingPage() {
     sendVerificationEmail,
     verifyEmail,
   } = useAuth();
+  const router = useRouter();
 
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(initialMode === "signup");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -58,6 +64,8 @@ export function LandingPage() {
         // Sign in existing user
         await signIn(email, password);
         toast.success("Signed in successfully!");
+        // Redirect to home page
+        router.push("/home");
       }
     } catch (error) {
       const errorMessage =
@@ -76,6 +84,8 @@ export function LandingPage() {
     await verifyEmail(userId, otp);
     // After successful verification, user is already logged in
     setShowOTPVerification(false);
+    toast.success("Email verified! Redirecting to home...");
+    router.push("/home");
   };
 
   const handleOTPResend = async () => {
@@ -94,6 +104,7 @@ export function LandingPage() {
   const handleGuestMode = () => {
     continueAsGuest();
     toast.info("You're now in Guest Mode. Chats will not be saved.");
+    router.push("/home");
   };
 
   const handleGoogleSignIn = async () => {
@@ -328,7 +339,11 @@ export function LandingPage() {
           <div className="text-center mt-6">
             <button
               type="button"
-              onClick={() => setIsSignUp(!isSignUp)}
+              onClick={() => {
+                const newMode = !isSignUp;
+                setIsSignUp(newMode);
+                router.push(newMode ? "/signUp" : "/signIn");
+              }}
               className="text-[#10A37F] hover:text-[#0D8C6C] text-sm font-medium transition-colors duration-200"
             >
               {isSignUp
