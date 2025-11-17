@@ -40,6 +40,7 @@ export function ChatInterface() {
     if (user && !isGuest) {
       loadChats();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, isGuest]);
 
   useEffect(() => {
@@ -305,7 +306,7 @@ export function ChatInterface() {
                 setIsGenerating(false);
                 return;
               }
-            } catch (e) {
+            } catch {
               // Not complete JSON yet, continue reading
             }
           }

@@ -106,6 +106,7 @@ export function Sidebar({
     } else if (previousChatIds.length === 0) {
       setPreviousChatIds(currentIds);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chats]);
 
   const SidebarContent = () => (

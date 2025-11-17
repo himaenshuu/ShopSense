@@ -65,6 +65,7 @@ export function EmailProductDialog({
       setEmailPreview(null); // Clear old preview
       generateEmail();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, productName]);
 
   const generateEmail = async () => {
