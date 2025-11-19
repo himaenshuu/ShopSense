@@ -74,4 +74,10 @@ next-env.d.ts
 .vercel
 *.pem
 
+# Project specific
 data
+src/app/api/sentiment_analysis/
+src/app/api/sentiment_analysis/app.py
+node_modules
+.gitignore
+Project Report Guidelines.docx
