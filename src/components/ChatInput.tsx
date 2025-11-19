@@ -200,7 +200,7 @@ export function ChatInput({
               setMessage(e.target.value);
             }}
             onKeyDown={handleKeyDown}
-            placeholder="Message ShopSense..."
+            placeholder="Message Bert5..."
             disabled={disabled || isListening}
             rows={1}
             className="w-full px-4 py-3 pr-24 bg-white dark:bg-[#40414f] text-[#202123] dark:text-[#ececf1] border border-gray-200 dark:border-gray-600 rounded-3xl resize-none focus:outline-none focus:border-[#10A37F] focus:ring-2 focus:ring-[#10A37F]/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm placeholder:text-[#6e6e80] dark:placeholder:text-[#9b9ba5]"
@@ -260,7 +260,7 @@ export function ChatInput({
           )}
         </div>
         <p className="text-xs text-center text-[#6e6e80] dark:text-[#9b9ba5] mt-3">
-          ShopSense can make mistakes. Check important info.
+          Bert5 can make mistakes. Check important info.
         </p>
       </div>
     </div>

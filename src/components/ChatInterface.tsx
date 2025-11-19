@@ -648,7 +648,7 @@ export function ChatInterface() {
             <Menu className="w-5 h-5" />
           </Button>
           <h1 className="text-xl font-semibold text-[#202123] dark:text-[#ececf1]">
-            ShopSense
+            Bert5
           </h1>
         </header>
 
@@ -680,7 +680,7 @@ export function ChatInterface() {
                   Start a conversation or try one of the examples below
                 </p>
 
-                {/* Example Prompts - ShopSense Style */}
+                {/* Example Prompts - Bert5 Style */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-2xl mx-auto">
                   <button
                     onClick={() =>

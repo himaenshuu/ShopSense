@@ -172,10 +172,10 @@ export function LandingPage({ initialMode = "signin" }: LandingPageProps) {
               <MessageSquare className="w-8 h-8 text-white" />
             </div>
             <h1 className="text-2xl font-semibold text-[#202123] dark:text-[#ececf1] mb-2">
-              Welcome to ShopSense
+              Welcome to Bert5
             </h1>
             <p className="text-[#6e6e80] dark:text-[#9b9ba5]">
-              Log in with your ShopSense account to continue
+              Log in with your Bert5 account to continue
             </p>
           </div>
 

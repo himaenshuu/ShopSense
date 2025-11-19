@@ -77,13 +77,14 @@ class ProductService {
         { projection: { score: { $meta: "textScore" } } }
       )
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .sort({ score: { $meta: "textScore" } } as any)
       .limit(limit * 2) // Get more results to filter by relevance
       .toArray();
 
     // Filter results by minimum relevance score (textScore > 1.0 is decent match)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const relevantResults = results.filter(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (doc: any) => doc.score && doc.score > 1.0
     );
 

@@ -137,13 +137,13 @@ Generate:
      * Center-aligned, placed after reviews section
      * Link to: ${productData.productUrl || "#"}
    - Professional closing
-   - Footer with: "© 2025 ShopSense. Your AI-powered shopping assistant."
+   - Footer with: "© 2025 Bert5. Your AI-powered shopping assistant."
 3. Plain text version (no HTML tags, include product URL as plain text)
 
 IMPORTANT BRANDING GUIDELINES:
-- The email is sent by "ShopSense" - an AI-powered shopping assistant platform
-- Footer MUST say: "© 2025 ShopSense" (NOT the product brand name)
-- Any company references should be to "ShopSense", not the product manufacturer
+- The email is sent by "Bert5" - an AI-powered shopping assistant platform
+- Footer MUST say: "© 2025 Bert5" (NOT the product brand name)
+- Any company references should be to "Bert5", not the product manufacturer
 - Keep the product brand name only in product details, not in footer or company info
 
 Respond in JSON format:
@@ -225,7 +225,7 @@ Make it visually appealing, use emojis appropriately, and keep it professional b
         </p>
         
         <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #E5E7EB; text-align: center; color: #9CA3AF; font-size: 14px;">
-          <p style="margin: 5px 0;">© 2025 ShopSense</p>
+          <p style="margin: 5px 0;">© 2025 Bert5</p>
           <p style="margin: 5px 0;">Your AI-powered shopping assistant</p>
         </div>
       </div>

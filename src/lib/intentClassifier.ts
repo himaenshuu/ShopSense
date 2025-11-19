@@ -7,6 +7,7 @@ export type QueryIntent =
   | "email_request"
   | "general_question"
   | "greeting"
+  | "about_me"
   | "unknown";
 
 export interface IntentClassification {
@@ -126,6 +127,26 @@ const INTENT_PATTERNS = {
       "good evening",
     ],
     patterns: [/^(?:hi|hello|hey|greetings?)(?:\s|!|\.)*$/i],
+  },
+  about_me: {
+    keywords: [
+      "who made",
+      "who created",
+      "who owns",
+      "made by",
+      "created by",
+      "who are you",
+      "what are you",
+      "tell me about yourself",
+      "about you",
+    ],
+    patterns: [
+      /(?:who made|who created|who built|who owns) (?:you|bert5)/i,
+      /who (?:are you|is|made)/i,
+      /what (?:are you|is bert5)/i,
+      /tell me about (?:yourself|bert5|you)/i,
+      /(?:about|creator|creator of) (?:bert5|you)/i,
+    ],
   },
   general_question: {
     keywords: [

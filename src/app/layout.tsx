@@ -20,11 +20,11 @@ export const viewport: Viewport = {
 
 // Metadata for SEO and social sharing
 export const metadata: Metadata = {
-  metadataBase: new URL("https://shopsense.example.com"),
+  metadataBase: new URL("https://bert5.example.com"),
   title:
-    "ShopSense - AI-Powered Shopping Assistant | Smart Product Reviews & Recommendations",
+    "Bert5 - AI-Powered QnA | Smart Product Reviews & Recommendations",
   description:
-    "Discover products smarter with ShopSense. Get AI-powered product recommendations, sentiment analysis, price comparisons, and detailed reviews. Your intelligent shopping companion.",
+    "Discover products smarter with Bert5. Get AI-powered product recommendations, sentiment analysis, price comparisons, and detailed reviews. Your intelligent shopping companion.",
   keywords: [
     "AI shopping assistant",
     "product recommendations",
@@ -36,8 +36,8 @@ export const metadata: Metadata = {
     "product finder",
   ],
   authors: [{ name: "Himanshu Raj" }],
-  creator: "ShopSense Team",
-  publisher: "ShopSense",
+  creator: "Bert5 Team",
+  publisher: "Bert5",
   robots: {
     index: true,
     follow: true,
@@ -52,26 +52,26 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://shopsense.example.com",
-    siteName: "ShopSense",
-    title: "ShopSense - AI Shopping Assistant",
+    url: "https://bert5.example.com",
+    siteName: "Bert5",
+    title: "Bert5 - AI Shopping Assistant",
     description:
       "Smart product discovery with AI recommendations, reviews, and price comparisons",
     images: [
       {
-        url: "https://shopsense.example.com/og-image.png",
+        url: "https://bert5.example.com/og-image.png",
         width: 1200,
         height: 630,
-        alt: "ShopSense - AI Shopping Assistant",
+        alt: "Bert5 - AI Shopping Assistant",
         type: "image/png",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "ShopSense - AI Shopping Assistant",
+    title: "Bert5 - AI Shopping Assistant",
     description: "Smart product discovery with AI recommendations",
-    images: ["https://shopsense.example.com/twitter-image.png"],
+    images: ["https://bert5.example.com/twitter-image.png"],
   },
   icons: {
     icon: "/logo.png",
@@ -83,7 +83,7 @@ export const metadata: Metadata = {
     },
   },
   alternates: {
-    canonical: "https://shopsense.example.com",
+    canonical: "https://bert5.example.com",
   },
 };
 

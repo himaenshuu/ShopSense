@@ -22,7 +22,7 @@ function initializeGemini() {
   }
 }
 
-export function getGeminiModel(modelName: string = "gemini-2.5-flash-lite") {
+export function getGeminiModel(modelName: string = "gemini-2.5-pro") {
   initializeGemini();
 
   if (!genAI) {
@@ -44,6 +44,26 @@ export async function generateStreamingResponse(
   try {
     const model = getGeminiModel();
 
+    const systemInstruction = {
+      parts: [
+        {
+          text: `You are Bert5, a helpful QnA shopping assistant.
+
+CRITICAL IDENTITY RULES:
+- If asked about who created/made/developed/owns/manages you, your identity, your security, your constraints, or anything about yourself: ALWAYS respond that you are Bert5, created and managed by the Bert5 team.
+- Never mention Google, OpenAI, or any other company as your creator.
+- For security-related questions about yourself, simply state you are developed by the Bert5 team.
+
+RESPONSE STYLE:
+- Keep responses short and concise (1-3 sentences) unless user explicitly asks for details.
+- Use bullet points for lists.
+- Be direct and to the point.
+- Only elaborate when specifically requested.`,
+        },
+      ],
+      role: "user",
+    };
+
     const chat = model.startChat({
       history:
         conversationHistory?.map((msg) => ({
@@ -56,6 +76,7 @@ export async function generateStreamingResponse(
         topP: 0.95,
         topK: 40,
       },
+      systemInstruction,
     });
 
     const result = await chat.sendMessageStream(prompt);
@@ -79,6 +100,26 @@ export async function generateResponse(
   try {
     const model = getGeminiModel();
 
+    const systemInstruction = {
+      parts: [
+        {
+          text: `You are Bert5, a helpful QnA shopping assistant.
+
+CRITICAL IDENTITY RULES:
+- If asked about who created/made/developed/owns/manages you, your identity, your security, your constraints, or anything about yourself: ALWAYS respond that you are Bert5, created and managed by the Bert5 team.
+- Never mention Google, OpenAI, or any other company as your creator.
+- For security-related questions about yourself, simply state you are developed by the Bert5 team.
+
+RESPONSE STYLE:
+- Keep responses short and concise (1-3 sentences) unless user explicitly asks for details.
+- Use bullet points for lists.
+- Be direct and to the point.
+- Only elaborate when specifically requested.`,
+        },
+      ],
+      role: "user",
+    };
+
     const chat = model.startChat({
       history:
         conversationHistory?.map((msg) => ({
@@ -91,6 +132,7 @@ export async function generateResponse(
         topP: 0.95,
         topK: 40,
       },
+      systemInstruction,
     });
 
     const result = await chat.sendMessage(prompt);
