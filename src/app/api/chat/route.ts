@@ -15,6 +15,10 @@ const STREAMING_CONFIG = {
   DELAY_MS: 20,
 };
 
+function createUnavailableMessage(productType: string): string {
+  return `I apologize, but I don't have information about ${productType} in our current inventory. Our database contains products that are actually available for review. Would you like to see what products we do have available?`;
+}
+
 async function enhanceMessageWithProductData(message: string): Promise<string> {
   const classification = classifyIntent(message);
   const { intent, requiresData, extractedEntities } = classification;
@@ -38,13 +42,17 @@ async function enhanceMessageWithProductData(message: string): Promise<string> {
       const priceInfoList = await productService.getProductPrice(productName);
 
       if (priceInfoList && priceInfoList.length > 0) {
-        productData = "\n\n[PRODUCT DATA]\n";
+        productData = "\n\n[PRICE DATA FROM DATABASE]\n";
         priceInfoList.slice(0, 3).forEach((p) => {
           productData += `- ${p.product_name}: ${p.discounted_price} (was ${p.actual_price}, save ${p.savings})\n`;
         });
         console.log(
           `[Data] Found ${priceInfoList.length} products for pricing`
         );
+      } else {
+        return `${createUnavailableMessage(
+          productName
+        )}\n\nIMPORTANT: Do NOT provide pricing for products not in our database.`;
       }
     } else if (intent === "product_reviews") {
       const productName = extractedEntities.productName || message;
@@ -56,7 +64,7 @@ async function enhanceMessageWithProductData(message: string): Promise<string> {
         const sentiments = await analyzeBatchSentiments(reviewTexts);
         const stats = getSentimentStats(sentiments);
 
-        productData = "\n\n[PRODUCT REVIEWS]\n";
+        productData = "\n\n[PRODUCT REVIEWS FROM DATABASE]\n";
         productData += `Sentiment Analysis: ${stats.positivePercent}% positive, ${stats.negativePercent}% negative, ${stats.neutralPercent}% neutral\n\n`;
 
         reviews.slice(0, limit).forEach((review, i) => {
@@ -76,25 +84,55 @@ async function enhanceMessageWithProductData(message: string): Promise<string> {
         console.log(
           `[Data] Found ${reviews.length} reviews with sentiment analysis`
         );
+      } else {
+        return `${createUnavailableMessage(
+          productName
+        )}\n\nIMPORTANT: Do NOT generate fake reviews or product information. Only use data from our database.`;
       }
     } else if (intent === "product_search") {
-      const searchTerm = extractedEntities.productName || message;
-      const limit = extractedEntities.limit || 10;
+      const limit = extractedEntities.limit || 5;
       const priceRange = extractedEntities.priceRange;
+      const category = extractedEntities.productCategory;
+      const productName = extractedEntities.productName;
 
       let products;
-      if (priceRange) {
+      let searchContext = "";
+
+      if (priceRange && category) {
+        // Price range WITH category (e.g., "phones under 20k")
+        products = await productService.getProductsByPriceRange(
+          priceRange.min,
+          priceRange.max,
+          limit,
+          category
+        );
+        searchContext = `${category} in price range ₹${priceRange.min}-₹${priceRange.max}`;
+      } else if (priceRange) {
+        // Price range without category
         products = await productService.getProductsByPriceRange(
           priceRange.min,
           priceRange.max,
           limit
         );
+        searchContext = `in price range ₹${priceRange.min}-₹${priceRange.max}`;
+      } else if (productName) {
+        // Specific product search (e.g., "best iQOO phones")
+        products = await productService.getTopRatedProducts(productName, limit);
+        searchContext = `for "${productName}"`;
+      } else if (category) {
+        // Category search (e.g., "top smartphones")
+        products = await productService.getTopRatedProducts(category, limit);
+        searchContext = `in ${category} category`;
       } else {
-        products = await productService.getTopRatedProducts(searchTerm, limit);
+        // Fallback: get top-rated products overall
+        products = await productService.getTopRatedProducts("", limit);
+        searchContext = "overall";
       }
 
+      console.log(`[Search] Looking for products ${searchContext}`);
+
       if (products && products.length > 0) {
-        productData = "\n\n[PRODUCT SEARCH RESULTS]\n";
+        productData = `\n\n[TOP ${products.length} PRODUCTS FROM DATABASE]\n`;
         products.forEach((p, i) => {
           const price =
             typeof p.discounted_price === "string"
@@ -103,7 +141,17 @@ async function enhanceMessageWithProductData(message: string): Promise<string> {
           productData += `${i + 1}. ${p.product_name}\n`;
           productData += `   Price: ${price} | Rating: ${p.rating}/5 (${p.rating_count} reviews)\n`;
         });
-        console.log(`[Data] Found ${products.length} products in search`);
+        productData += `\n[STRICT INSTRUCTION] These are the ONLY products available. Present them as the top-rated ${
+          category || "products"
+        }. DO NOT mention any other products.\n`;
+        console.log(
+          `[Data] Found ${products.length} products ${searchContext}`
+        );
+      } else {
+        const searchTerm = productName || category || "products";
+        return `${createUnavailableMessage(
+          searchTerm
+        )}\n\nIMPORTANT: Do NOT make up product names or suggest products from your training data. Only mention products that are explicitly provided in the database.`;
       }
     } else if (intent === "product_info") {
       const productName = extractedEntities.productName || message;
@@ -111,7 +159,7 @@ async function enhanceMessageWithProductData(message: string): Promise<string> {
 
       if (products && products.length > 0) {
         const topProduct = products[0];
-        productData = "\n\n[PRODUCT INFORMATION]\n";
+        productData = "\n\n[PRODUCT INFORMATION FROM DATABASE]\n";
         const price =
           typeof topProduct.discounted_price === "string"
             ? topProduct.discounted_price
@@ -134,6 +182,10 @@ async function enhanceMessageWithProductData(message: string): Promise<string> {
           });
         }
         console.log(`[Data] Found product info for ${topProduct.product_name}`);
+      } else {
+        return `${createUnavailableMessage(
+          productName
+        )}\n\nIMPORTANT: Only provide information about products that exist in our database.`;
       }
     } else if (intent === "product_comparison") {
       const productName = extractedEntities.productName || message;
@@ -166,9 +218,15 @@ async function enhanceMessageWithProductData(message: string): Promise<string> {
 
     // Combine original message with product data
     if (productData) {
-      enhancedPrompt = `${message}${productData}\n\nIMPORTANT: Always give short and clear responses. Avoid lengthy explanations unless specifically asked. Be concise and to the point. Use bullet points when listing multiple items. Keep explanations brief (1-2 sentences maximum unless user asks for details).
+      enhancedPrompt = `${message}${productData}\n\nCRITICAL INSTRUCTIONS:
+1. ONLY use products listed in the [PRODUCT DATA] or [AVAILABLE PRODUCTS] sections above
+2. DO NOT mention any products from your training data (like iPhone 15, Samsung S24, etc.)
+3. If a user asks about a product not in the database, politely say it's not available
+4. Keep responses short and clear (1-2 sentences max unless details requested)
+5. Use bullet points for multiple items
+6. Include prices and ratings from the data provided
 
-Please provide a helpful response based on the product data above. Format your response clearly with proper markdown formatting. Include specific product details and prices when relevant.`;
+Provide a helpful response using ONLY the product data above. Format clearly with markdown.`;
     }
   } catch (error) {
     console.error(

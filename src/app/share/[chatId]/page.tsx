@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import Link from "next/link";
 import { Loader2, AlertCircle } from "lucide-react";
 import { ChatBubble } from "@/components/ChatBubble";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -78,9 +79,7 @@ export default function SharedChatPage() {
                 Loading chat...
               </p>
             )}
-            {error && (
-              <p className="text-sm text-red-500">Error: {error}</p>
-            )}
+            {error && <p className="text-sm text-red-500">Error: {error}</p>}
           </div>
           <ThemeToggle />
         </div>
@@ -104,15 +103,13 @@ export default function SharedChatPage() {
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
                 Unable to Load Chat
               </h2>
-              <p className="text-gray-600 dark:text-gray-400">
-                {error}
-              </p>
-              <a
+              <p className="text-gray-600 dark:text-gray-400">{error}</p>
+              <Link
                 href="/"
                 className="mt-4 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition"
               >
                 Go to Home
-              </a>
+              </Link>
             </div>
           </div>
         ) : chat ? (

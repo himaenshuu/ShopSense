@@ -169,13 +169,81 @@ const INTENT_PATTERNS = {
 };
 
 function extractLimit(query: string): number | undefined {
-  const match = query.match(/(?:top|show|get|list)\s+(\d+)/i);
+  const match = query.match(
+    /(?:top|show|get|list|first)\s+(\d+|five|ten|twenty)/i
+  );
   if (match) {
-    const num = parseInt(match[1]);
-    return num > 0 && num <= 100 ? num : undefined;
+    const numMap: Record<string, number> = { five: 5, ten: 10, twenty: 20 };
+    const value = match[1].toLowerCase();
+    const num = numMap[value] || parseInt(match[1], 10);
+
+    // Validate number is valid and within reasonable range
+    if (isNaN(num) || num <= 0 || num > 100) {
+      return undefined;
+    }
+
+    return num;
   }
   return undefined;
 }
+
+function extractCategory(query: string): string | undefined {
+  const categoryPatterns = [
+    // Order matters: more specific patterns first to avoid false matches
+    { regex: /headphone|earphone|earbud|headset/i, category: "headphone" },
+    {
+      regex:
+        /smartphone|\bphone(?!\s*(?:charger|case|cover|holder|stand|mount))/i,
+      category: "smartphone",
+    },
+    { regex: /\btv\b|television/i, category: "tv" },
+    { regex: /speaker|audio/i, category: "speaker" },
+    { regex: /laptop|notebook/i, category: "laptop" },
+    { regex: /tablet|ipad/i, category: "tablet" },
+    { regex: /watch|smartwatch/i, category: "watch" },
+    { regex: /camera/i, category: "camera" },
+  ];
+
+  for (const { regex, category } of categoryPatterns) {
+    if (regex.test(query)) {
+      return category;
+    }
+  }
+
+  return undefined;
+}
+
+// Pre-compiled brand patterns for performance (defined outside function)
+const BRAND_PATTERNS = [
+  "iqoo",
+  "oneplus",
+  "samsung",
+  "mi",
+  "boat",
+  "sony",
+  "apple",
+  "realme",
+  "redmi",
+  "oppo",
+  "vivo",
+  "lg",
+  "dell",
+  "hp",
+  "lenovo",
+  "asus",
+  "acer",
+  "msi",
+  "jbl",
+  "bose",
+  "philips",
+  "amazon",
+  "xiaomi",
+  "motorola",
+  "nokia",
+].map((brand) => ({
+  brand,
+  regex: new RegExp(`\\b(${brand}(?:\\s+\\w+){0,3})\\b`, "i"),
+}));
 
 function extractProductName(
   query: string,
@@ -183,6 +251,25 @@ function extractProductName(
 ): string | undefined {
   const intentConfig = INTENT_PATTERNS[intent as keyof typeof INTENT_PATTERNS];
   const patterns = intentConfig?.patterns;
+
+  // For product_search intent, only extract specific brand names, not categories
+  if (intent === "product_search") {
+    const lowerQuery = query.toLowerCase();
+
+    // Use pre-compiled regex patterns for better performance
+    for (const { brand, regex } of BRAND_PATTERNS) {
+      if (lowerQuery.includes(brand)) {
+        const brandMatch = query.match(regex);
+        if (brandMatch && brandMatch[1]) {
+          return brandMatch[1].trim();
+        }
+      }
+    }
+
+    // If no brand found, don't extract product name - let category extraction handle it
+    return undefined;
+  }
+
   if (!patterns) return undefined;
 
   for (const pattern of patterns) {
@@ -203,30 +290,67 @@ function extractProductName(
 function extractPriceRange(
   query: string
 ): { min: number; max: number } | undefined {
+  // Helper to parse price with k/lakh suffix
+  const parsePrice = (value: string): number => {
+    const num = parseFloat(value);
+    if (isNaN(num)) return NaN;
+
+    const lowerValue = value.toLowerCase();
+    if (lowerValue.includes("k")) return num * 1000;
+    if (lowerValue.includes("lakh") || lowerValue.includes("lac"))
+      return num * 100000;
+    return num;
+  };
+
+  // Match patterns like "between ₹10k to ₹20k" or "from 10000 - 20000"
   const rangeMatch = query.match(
-    /(?:between|from)\s+₹?(\d+)\s+(?:to|and|-)\s+₹?(\d+)/i
+    /(?:between|from)\s+₹?(\d+(?:\.\d+)?)\s*k?(?:lakh|lac)?\s+(?:to|and|-)\s+₹?(\d+(?:\.\d+)?)\s*k?(?:lakh|lac)?/i
   );
   if (rangeMatch) {
-    return {
-      min: parseInt(rangeMatch[1]),
-      max: parseInt(rangeMatch[2]),
-    };
+    const min = parsePrice(
+      rangeMatch[1] + (rangeMatch[0].toLowerCase().includes("k") ? "k" : "")
+    );
+    const max = parsePrice(
+      rangeMatch[2] + (rangeMatch[0].toLowerCase().includes("k") ? "k" : "")
+    );
+
+    if (isNaN(min) || isNaN(max) || min < 0 || max < 0 || min >= max) {
+      return undefined;
+    }
+
+    return { min, max };
   }
 
-  const underMatch = query.match(/under\s+₹?(\d+)/i);
+  // Match "under ₹20k" or "under 20000"
+  const underMatch = query.match(
+    /under\s+₹?(\d+(?:\.\d+)?)\s*k?(?:lakh|lac)?/i
+  );
   if (underMatch) {
-    return {
-      min: 0,
-      max: parseInt(underMatch[1]),
-    };
+    const max = parsePrice(
+      underMatch[1] + (underMatch[0].toLowerCase().includes("k") ? "k" : "")
+    );
+
+    if (isNaN(max) || max <= 0) {
+      return undefined;
+    }
+
+    return { min: 0, max };
   }
 
-  const aboveMatch = query.match(/above\s+₹?(\d+)/i);
+  // Match "above ₹10k" or "above 10000"
+  const aboveMatch = query.match(
+    /above\s+₹?(\d+(?:\.\d+)?)\s*k?(?:lakh|lac)?/i
+  );
   if (aboveMatch) {
-    return {
-      min: parseInt(aboveMatch[1]),
-      max: 999999,
-    };
+    const min = parsePrice(
+      aboveMatch[1] + (aboveMatch[0].toLowerCase().includes("k") ? "k" : "")
+    );
+
+    if (isNaN(min) || min < 0) {
+      return undefined;
+    }
+
+    return { min, max: 999999 };
   }
 
   return undefined;
@@ -234,6 +358,9 @@ function extractPriceRange(
 
 function isProductRelated(query: string): boolean {
   const productKeywords = [
+    "smartphone",
+    "phone",
+    "mobile",
     "cable",
     "charger",
     "adapter",
@@ -244,16 +371,23 @@ function isProductRelated(query: string): boolean {
     "speaker",
     "headphone",
     "earphone",
+    "earbud",
     "tv",
+    "television",
     "remote",
     "mouse",
     "keyboard",
+    "laptop",
+    "tablet",
+    "watch",
+    "camera",
     "boat",
     "amazon",
     "samsung",
     "mi",
     "oneplus",
     "apple",
+    "iqoo",
     "brand",
   ];
 
@@ -304,7 +438,20 @@ export function classifyIntent(query: string): IntentClassification {
     maxScore = 2;
   }
 
-  const confidence = Math.min(maxScore / 10, 1);
+  // Normalize confidence: cap at 10 for scaling, ensure 0-1 range
+  const normalizedScore = Math.min(maxScore, 10);
+  const confidence = normalizedScore / 10;
+
+  // Apply minimum confidence threshold
+  const MIN_CONFIDENCE = 0.2;
+  if (
+    confidence < MIN_CONFIDENCE &&
+    bestIntent !== "greeting" &&
+    bestIntent !== "about_me"
+  ) {
+    // Low confidence - default to general question or unknown
+    bestIntent = maxScore > 0 ? "general_question" : "unknown";
+  }
 
   const dataRequiredIntents: QueryIntent[] = [
     "product_price",
@@ -318,6 +465,7 @@ export function classifyIntent(query: string): IntentClassification {
 
   const extractedEntities: IntentClassification["extractedEntities"] = {
     productName: extractProductName(query, bestIntent),
+    productCategory: extractCategory(query),
     limit: extractLimit(query),
     priceRange: extractPriceRange(query),
   };

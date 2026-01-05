@@ -145,13 +145,20 @@ class ProductService {
   async getProductsByPriceRange(
     minPrice: number,
     maxPrice: number,
-    limit: number = 20
+    limit: number = 20,
+    category?: string
   ): Promise<Product[]> {
     const collection = await this.getCollection();
 
+    // Build query with optional category filter
+    const query: Record<string, unknown> = {};
+    if (category) {
+      query.category = { $regex: category, $options: "i" };
+    }
+
     const allProducts = (await collection
-      .find({})
-      .limit(1000)
+      .find(query)
+      .limit(2000)
       .toArray()) as unknown as Product[];
 
     const filtered = allProducts
@@ -161,6 +168,12 @@ class ProductService {
       })
       .sort((a, b) => b.rating - a.rating)
       .slice(0, limit);
+
+    console.log(
+      `[ProductService] Price range ₹${minPrice}-₹${maxPrice}${
+        category ? ` in ${category} category` : ""
+      }: found ${filtered.length} products`
+    );
 
     return filtered;
   }
@@ -291,6 +304,25 @@ class ProductService {
     const collection = await this.getCollection();
     const categories = await collection.distinct("category");
     return categories as string[];
+  }
+
+  async hasRelevantProducts(
+    query: string,
+    minScore: number = 2.0
+  ): Promise<boolean> {
+    const collection = await this.getCollection();
+    const results = await collection
+      .find(
+        { $text: { $search: query } },
+        { projection: { score: { $meta: "textScore" } } }
+      )
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .sort({ score: { $meta: "textScore" } } as any)
+      .limit(1)
+      .toArray();
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return results.length > 0 && (results[0] as any).score >= minScore;
   }
 }
 

@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { databases } from "@/lib/appwrite";
+import type { Message } from "@/lib/appwrite";
 import { Query } from "appwrite";
 
 const DATABASE_ID = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID || "";
-const CHATS_COLLECTION_ID = process.env.NEXT_PUBLIC_APPWRITE_CHATS_COLLECTION_ID || "";
-const MESSAGES_COLLECTION_ID = process.env.NEXT_PUBLIC_APPWRITE_MESSAGES_COLLECTION_ID || "";
+const CHATS_COLLECTION_ID =
+  process.env.NEXT_PUBLIC_APPWRITE_CHATS_COLLECTION_ID || "";
+const MESSAGES_COLLECTION_ID =
+  process.env.NEXT_PUBLIC_APPWRITE_MESSAGES_COLLECTION_ID || "";
 
 export async function GET(
   _request: NextRequest,
@@ -39,10 +42,7 @@ export async function GET(
     );
 
     if (!chat) {
-      return NextResponse.json(
-        { error: "Chat not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Chat not found" }, { status: 404 });
     }
 
     // Fetch messages for this chat
@@ -56,13 +56,15 @@ export async function GET(
       ]
     );
 
-    const messages = messagesResponse.documents.map((msg: any) => ({
-      id: msg.$id,
-      chatId: msg.chatId,
-      role: msg.role,
-      content: msg.content,
-      timestamp: msg.createdAt,
-    }));
+    const messages = (messagesResponse.documents as unknown as Message[]).map(
+      (msg) => ({
+        id: msg.$id,
+        chatId: msg.chatId,
+        role: msg.role,
+        content: msg.content,
+        timestamp: msg.createdAt,
+      })
+    );
 
     // Return the chat data with messages
     return NextResponse.json({
