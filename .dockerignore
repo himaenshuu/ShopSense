@@ -1,0 +1,57 @@
+# Dependencies
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build outputs
+.next
+out
+dist
+build
+
+# Development files
+.env*
+
+# Testing
+coverage
+.nyc_output
+test-results
+
+# IDE and editor files
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+docs/
+readme-files/
+project-docs/
+
+# Docker files
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Scripts and data (not needed in production)
+scripts/
+data/
+test/
+
+# Misc
+.prettierrc
+.eslintrc*
+.editorconfig
+.npmrc
+.yarnrc
+tsconfig.tsbuildinfo

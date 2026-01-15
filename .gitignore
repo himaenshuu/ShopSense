@@ -17,10 +17,11 @@ node_modules/
 /out/
 /build
 /dist
+.github/
 
 # Environment variables
-.env
-.env.production
+.env*
+
 
 
 # Logs

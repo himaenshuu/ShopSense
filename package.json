@@ -6,12 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "import:csv": "tsx scripts/csvToMongodb.ts",
-    "test:products": "tsx scripts/testProductService.ts",
-    "test:intent": "tsx scripts/testIntentClassifier.ts",
-    "test:routing": "tsx scripts/testBasicRouting.ts",
-    "test:sentiment": "tsx scripts/testSentiment.ts"
+    "lint": "next lint"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
