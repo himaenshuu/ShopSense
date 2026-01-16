@@ -17,12 +17,9 @@ node_modules/
 /out/
 /build
 /dist
-.github/
 
 # Environment variables
 .env*
-
-
 
 # Logs
 npm-debug.log*
@@ -32,16 +29,6 @@ pnpm-debug.log*
 lerna-debug.log*
 *.log
 
-# OS files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-desktop.ini
-
 # IDE files
 .vscode/
 .idea/
@@ -50,17 +37,14 @@ desktop.ini
 *~
 .project
 .classpath
+
+# GitHub (allow workflows)
 .settings/
-*.sublime-project
-*.sublime-workspace
 
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
 
-# Jupyter Notebooks
-.ipynb_checkpoints
-*.ipynb
 
 # Documentation (except README.md)
 *.md
@@ -71,8 +55,8 @@ next-env.d.ts
 .parcel-cache/
 .eslintcache
 
-# Misc
-.vercel
+# Misc and json file
+vercel.json
 *.pem
 
-data
+# cd workflows
