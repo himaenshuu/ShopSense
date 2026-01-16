@@ -264,7 +264,7 @@ export async function POST(request: NextRequest) {
                   setTimeout(resolve, STREAMING_CONFIG.DELAY_MS)
                 );
               }
-            } catch (enqueueError) {
+            } catch {
               // Controller closed (client disconnected), stop streaming
               console.log("Stream closed by client");
               break;

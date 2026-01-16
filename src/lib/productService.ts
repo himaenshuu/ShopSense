@@ -76,15 +76,15 @@ class ProductService {
         },
         { projection: { score: { $meta: "textScore" } } }
       )
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .sort({ score: { $meta: "textScore" } } as any)
+      .sort({ score: { $meta: "textScore" } } as { score: { $meta: string } })
       .limit(limit * 2) // Get more results to filter by relevance
       .toArray();
 
     // Filter results by minimum relevance score (textScore > 1.0 is decent match)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const relevantResults = results.filter(
-      (doc: any) => doc.score && doc.score > 1.0
+      (doc): doc is typeof doc & { score: number } => {
+        return 'score' in doc && typeof doc.score === 'number' && doc.score > 1.0;
+      }
     );
 
     if (relevantResults.length > 0) {
