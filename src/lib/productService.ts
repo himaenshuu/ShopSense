@@ -83,7 +83,9 @@ class ProductService {
     // Filter results by minimum relevance score (textScore > 1.0 is decent match)
     const relevantResults = results.filter(
       (doc): doc is typeof doc & { score: number } => {
-        return 'score' in doc && typeof doc.score === 'number' && doc.score > 1.0;
+        return (
+          "score" in doc && typeof doc.score === "number" && doc.score > 1.0
+        );
       }
     );
 
