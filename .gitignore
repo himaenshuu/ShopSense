@@ -56,7 +56,6 @@ next-env.d.ts
 .eslintcache
 
 # Misc and json file
-vercel.json
 *.pem
 
 # cd workflows
